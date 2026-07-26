@@ -25,9 +25,10 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize
 """
 
 _SCHEMA_INITIALIZED = False
+_LAST_DECAY_RUN = 0
 
 def get_db():
-    global _SCHEMA_INITIALIZED
+    global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
     conn.row_factory = sqlite3.Row
@@ -37,9 +38,12 @@ def get_db():
         conn.executescript(SCHEMA)
         _SCHEMA_INITIALIZED = True
         
-    # Auto-decay: reduce importance for memories untouched for > 30 days
-    conn.execute("UPDATE memories SET importance = importance - 1 WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30")
-    conn.commit()
+    # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
+    import time
+    if time.time() - _LAST_DECAY_RUN > 3600:
+        conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30", (now(),))
+        conn.commit()
+        _LAST_DECAY_RUN = time.time()
     return conn
 
 def now():
@@ -125,7 +129,10 @@ def t_save(a):
 
     conn = get_db()
     conn.execute(
-        "INSERT OR REPLACE INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) VALUES(?,?,?,?,?,?,?,0)",
+        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) 
+           VALUES(?,?,?,?,?,?,?,0) 
+           ON CONFLICT(id) DO UPDATE SET 
+           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at""",
         (mid, cat, content, tags, imp, now(), now())
     )
     conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
@@ -143,7 +150,10 @@ def t_save_block(a):
     conn = get_db()
     content = text[:MAX_CONTENT]
     conn.execute(
-        "INSERT OR REPLACE INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) VALUES(?,?,?,?,?,?,?,0)",
+        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) 
+           VALUES(?,?,?,?,?,?,?,0) 
+           ON CONFLICT(id) DO UPDATE SET 
+           category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at""",
         (mid, cat, content, "", imp, now(), now())
     )
     conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))

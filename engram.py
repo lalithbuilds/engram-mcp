@@ -29,7 +29,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("UPDATE memories SET importance = importance - 1 WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30")
+    conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30", (now(),))
     conn.commit()
     return conn
 
@@ -50,7 +50,10 @@ def cmd_save(args):
     mid = make_id(content)
     conn = get_db()
     conn.execute(
-        "INSERT OR REPLACE INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) VALUES(?,?,?,?,?,?,?,0)",
+        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) 
+           VALUES(?,?,?,?,?,?,?,0) 
+           ON CONFLICT(id) DO UPDATE SET 
+           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at""",
         (mid, category, content, tags, importance, now(), now())
     )
     conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
