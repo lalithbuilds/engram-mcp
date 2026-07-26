@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS memories (
     importance INTEGER NOT NULL DEFAULT 5,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    access_count INTEGER NOT NULL DEFAULT 0
+    access_count INTEGER NOT NULL DEFAULT 0,
+    last_accessed_at TEXT NOT NULL DEFAULT ''
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize='porter unicode61');
 """
@@ -36,6 +37,8 @@ def get_db():
     conn.execute("PRAGMA synchronous=NORMAL;")
     if not _SCHEMA_INITIALIZED:
         conn.executescript(SCHEMA)
+        try: conn.execute("ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT ''")
+        except: pass
         _SCHEMA_INITIALIZED = True
         
     # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
@@ -77,7 +80,7 @@ def t_auto_context(a):
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
         conn.commit()
         
     conn.close()
@@ -110,7 +113,7 @@ def t_smart_search(a):
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
         conn.commit()
         
     conn.close()
@@ -129,11 +132,11 @@ def t_save(a):
 
     conn = get_db()
     conn.execute(
-        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) 
-           VALUES(?,?,?,?,?,?,?,0) 
+        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
+           VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
-           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at""",
-        (mid, cat, content, tags, imp, now(), now())
+           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
+        (mid, cat, content, tags, imp, now(), now(), now())
     )
     conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
@@ -150,11 +153,11 @@ def t_save_block(a):
     conn = get_db()
     content = text[:MAX_CONTENT]
     conn.execute(
-        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) 
-           VALUES(?,?,?,?,?,?,?,0) 
+        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
+           VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
-           category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at""",
-        (mid, cat, content, "", imp, now(), now())
+           category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
+        (mid, cat, content, "", imp, now(), now(), now())
     )
     conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()

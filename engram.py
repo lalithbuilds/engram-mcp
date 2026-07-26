@@ -50,11 +50,11 @@ def cmd_save(args):
     mid = make_id(content)
     conn = get_db()
     conn.execute(
-        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) 
-           VALUES(?,?,?,?,?,?,?,0) 
+        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
+           VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
-           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at""",
-        (mid, category, content, tags, importance, now(), now())
+           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
+        (mid, category, content, tags, importance, now(), now(), now())
     )
     conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
@@ -81,7 +81,7 @@ def cmd_search(args):
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
         conn.commit()
         
     conn.close()
@@ -106,7 +106,7 @@ def cmd_recall(args):
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
         conn.commit()
         
     conn.close()
