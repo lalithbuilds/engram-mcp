@@ -2,6 +2,8 @@
 
 **A zero-dependency, auto-decaying, pure SQLite MCP server for persistent AI agent memory.**
 
+*Built in an afternoon. Tested harder than it was built. Documented because the code isn't enough.*
+
 > *engram (noun): a hypothesized physical trace of memory stored in the brain — the biological basis of how memories persist.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
