@@ -29,6 +29,8 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("UPDATE memories SET importance = importance - 1 WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30")
+    conn.commit()
     return conn
 
 
@@ -37,7 +39,7 @@ def now():
 
 
 def make_id(content):
-    return hashlib.sha1(f"{content}{now()}".encode()).hexdigest()[:12]
+    return hashlib.sha1(f"{content}".encode()).hexdigest()[:12]
 
 
 def cmd_save(args):
@@ -72,6 +74,13 @@ def cmd_search(args):
             "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? LIMIT ?",
             (f"%{query}%", limit)
         ).fetchall()
+        
+    if rows:
+        ids = [r['id'] for r in rows]
+        placeholders = ",".join(["?"] * len(ids))
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.commit()
+        
     conn.close()
     if not rows:
         print("No results.")
@@ -90,6 +99,13 @@ def cmd_recall(args):
         "SELECT id,category,content,tags,importance FROM memories WHERE importance>=? ORDER BY importance DESC LIMIT ?",
         (min_imp, limit)
     ).fetchall()
+    
+    if rows:
+        ids = [r['id'] for r in rows]
+        placeholders = ",".join(["?"] * len(ids))
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.commit()
+        
     conn.close()
     if not rows:
         print("No high-importance memories.")
@@ -132,6 +148,7 @@ def cmd_stats(args):
 def cmd_delete(args):
     conn = get_db()
     conn.execute("DELETE FROM memories WHERE id=?", (args.id,))
+    conn.execute("DELETE FROM memories_fts WHERE id=?", (args.id,))
     conn.commit()
     conn.close()
     print(f"DELETED {args.id}")

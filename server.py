@@ -35,17 +35,18 @@ def get_db():
     conn.execute("PRAGMA synchronous=NORMAL;")
     if not _SCHEMA_INITIALIZED:
         conn.executescript(SCHEMA)
-        # Auto-decay: reduce importance for memories untouched for > 30 days
-        conn.execute("UPDATE memories SET importance = importance - 1 WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30")
-        conn.commit()
         _SCHEMA_INITIALIZED = True
+        
+    # Auto-decay: reduce importance for memories untouched for > 30 days
+    conn.execute("UPDATE memories SET importance = importance - 1 WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30")
+    conn.commit()
     return conn
 
 def now():
     return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 def make_id(content):
-    return hashlib.sha1(f"{content}{now()}".encode()).hexdigest()[:12]
+    return hashlib.sha1(f"{content}".encode()).hexdigest()[:12]
 
 def safe_int(val, default, lo=None, hi=None):
     try:
@@ -70,8 +71,9 @@ def t_auto_context(a):
     ).fetchall()
     
     if rows:
-        ids = ",".join(f"'{r['id']}'" for r in rows)
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({ids})", (now(),))
+        ids = [r['id'] for r in rows]
+        placeholders = ",".join(["?"] * len(ids))
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
         conn.commit()
         
     conn.close()
@@ -102,8 +104,9 @@ def t_smart_search(a):
         ).fetchall()
         
     if rows:
-        ids = ",".join(f"'{r['id']}'" for r in rows)
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({ids})", (now(),))
+        ids = [r['id'] for r in rows]
+        placeholders = ",".join(["?"] * len(ids))
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({placeholders})", [now()] + ids)
         conn.commit()
         
     conn.close()
@@ -196,11 +199,11 @@ TOOLS = {
             "importance":{"type":"integer"}},
             "required":["content"]}
     },
-    "memory_extract_save": {
+    "memory_save_block": {
         "fn": t_extract_save,
-        "description": "Extract+save facts from text block. Use at session end. Max 8000 chars.",
+        "description": "Save a large block of text as a single memory. Note: Does not perform LLM extraction. Max 8000 chars.",
         "inputSchema": {"type":"object","properties":{
-            "text":{"type":"string","description":"Text to extract facts from"},
+            "text":{"type":"string","description":"Text to save as a block"},
             "category":{"type":"string"},
             "base_importance":{"type":"integer","description":"Base importance 1-10, default 6"}},
             "required":["text"]}
@@ -240,7 +243,7 @@ def handle(msg):
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":json.dumps(r,indent=2)}],"isError":False}})
         except Exception as e:
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}})
-            return {"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}}
+            return
     elif method in ("notifications/initialized","notifications/cancelled"): return None
     elif mid_ is not None:
         return {"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}}
@@ -249,7 +252,7 @@ def main():
     sys.stderr.write(f"[engram-mcp v4.1] Booting...\n")
     if len(sys.argv) > 1:
         if sys.argv[1] == "--diagnostics": sys.exit(0)
-    init_db()
+    get_db()
     
     for line in sys.stdin:
         try:

@@ -27,7 +27,7 @@ Existing solutions try to fix this by bolting on massive Vector Databases (Postg
 ### Key Benefits
 
 *   **Stop Repeating Yourself:** Teach your agent your preferences, tech stack, and architectural decisions *once*. It will automatically recall them on the next boot.
-*   **Zero Infrastructure:** No databases to spin up. Engram automatically creates a local SQLite file in your home directory (`~/.engram-mcp/memory.db`).
+*   **Zero Infrastructure:** No databases to spin up. Engram automatically creates a local SQLite file in your home directory (`~/engram-mcp/memory.db`).
 *   **Zero API Costs:** Because it uses local BM25/FTS5 keyword indexing instead of semantic embeddings, you pay $0 in API credits for memory retrieval.
 *   **Total Data Privacy:** Your codebase context and architectural secrets never leave your local machine.
 
