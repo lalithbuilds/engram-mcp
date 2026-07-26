@@ -1,43 +1,56 @@
 # 🧠 Engram MCP
 
-**A zero-dependency, stdlib-only MCP server for persistent AI agent memory.**
+**A zero-dependency, auto-decaying, pure SQLite MCP server for persistent AI agent memory.**
 
 > *engram (noun): a hypothesized physical trace of memory stored in the brain — the biological basis of how memories persist.*
-
-Built on pure Python 3 standard library. No cloud. No bloat. Just fast, local, full-text-searchable memory for your AI agents via the [Model Context Protocol](https://modelcontextprotocol.io).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-green.svg)](https://python.org)
 [![Dependencies](https://img.shields.io/badge/Dependencies-Zero-orange.svg)](#)
-[![MCP](https://img.shields.io/badge/Protocol-MCP-purple.svg)](https://modelcontextprotocol.io)
+[![Protocol](https://img.shields.io/badge/Protocol-MCP-purple.svg)](https://modelcontextprotocol.io)
+
+Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
 ---
 
-## Why This Exists
+## 🛑 The Problem: "Agent Amnesia"
 
-Every AI agent forgets everything the moment a session ends. Commercial solutions like Mem0 or Qdrant add network latency, disk corruption risk, and heavy dependencies.
+If you use AI coding agents, you know the frustration: **every session starts completely fresh**. 
+The agent doesn't remember that you prefer `pnpm` over `npm`, it forgets the architectural boundaries you agreed on yesterday, and it constantly asks you for the same context. 
 
-**Engram MCP** takes the opposite approach:
-- **Zero third-party dependencies** — runs on Python's stdlib (`sqlite3`, `json`, `hashlib`)
-- **FTS5 full-text search** with automatic `LIKE` fallback
-- **~200 lines of server code** — auditable in minutes
-- **Auto-initializing** — clones and runs instantly, no setup required
-- **Input-hardened** — safe against malformed types, SQL injection, and oversized payloads
+Existing solutions try to fix this by bolting on massive Vector Databases (PostgreSQL/pgvector, Chroma, Pinecone) that require heavy dependencies, Docker containers, and expensive OpenAI API calls just to generate embeddings.
 
-## Features
+## 💡 The Solution: What is Engram MCP?
 
-| Tool | Description |
-|:---|:---|
-| `memory_auto_context` | Session boot — returns top-ranked memories by importance. Call once at start. |
-| `memory_smart_search` | Multi-pass FTS5 keyword search with deduplication and `LIKE` fallback. |
-| `memory_save` | Save a memory with category, tags, and importance (1–10). Auto-deduplicates. |
-| `memory_extract_save` | Bulk-save a text block as memory. Designed for session-end extraction. |
-| `memory_delete` | Remove a memory by its unique 12-char SHA1 ID. |
-| `memory_stats` | Database stats: total count, category breakdown, file size. |
+**Engram MCP** is a ruthlessly optimized, zero-dependency alternative. It uses standard **SQLite FTS5 (Full-Text Search)** to achieve blazing-fast keyword retrieval entirely locally. You simply drop the `server.py` script into your MCP configuration, and your agent instantly gains the ability to remember, recall, and manage its own long-term memory across sessions.
 
-## Architecture
+### Key Benefits
 
-```
+*   **Stop Repeating Yourself:** Teach your agent your preferences, tech stack, and architectural decisions *once*. It will automatically recall them on the next boot.
+*   **Zero Infrastructure:** No databases to spin up. Engram automatically creates a local SQLite file in your home directory (`~/.engram-mcp/memory.db`).
+*   **Zero API Costs:** Because it uses local BM25/FTS5 keyword indexing instead of semantic embeddings, you pay $0 in API credits for memory retrieval.
+*   **Total Data Privacy:** Your codebase context and architectural secrets never leave your local machine.
+
+---
+
+## 🚀 Core Capabilities & Features
+
+1.  **🐍 Zero Dependencies**
+    Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`). No `pip install` required.
+2.  **⏳ Intelligent Auto-Decay (Forgetting Mechanism)**
+    Unlike other servers that hoard data forever, Engram tracks `access_count` and `updated_at`. If an old architectural decision hasn't been accessed by the agent in 30 days, its `importance` score automatically decays in the background. Your agent's context window stays clean and relevant.
+3.  **🛡️ Enterprise-Grade Concurrency (WAL Mode)**
+    Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes.
+4.  **🔒 Payload Bounding & Resilience**
+    Engram strictly clamps memory outputs (max 8 results) to prevent LLM context-window blowouts, and truncates incoming memories to 8,000 characters to prevent payload bloat.
+5.  **⌨️ Standalone CLI Manager**
+    Comes with a built-in terminal tool (`engram.py`) so human developers can manually view, edit, search, or delete the agent's memories at any time.
+
+---
+
+## ⚙️ How It Works (Architecture)
+
+```text
 ┌──────────────────────────────────────────────┐
 │              AI Agent / LLM                  │
 │         (Claude, Gemini, GPT, etc.)          │
@@ -48,30 +61,33 @@ Every AI agent forgets everything the moment a session ends. Commercial solution
 │         Engram MCP Server (server.py)        │
 │  ┌────────────┐  ┌─────────────────────────┐ │
 │  │ Tool Router│  │  SQLite3 + FTS5 Engine  │ │
+│  │ Auto-Decay │  │  WAL Mode Concurrency   │ │
 │  └────────────┘  └─────────────────────────┘ │
 └──────────────┬───────────────────────────────┘
                │
                ▼
 ┌──────────────────────────────────────────────┐
-│            memory.db (SQLite WAL)            │
+│            memory.db (Local File)            │
 │  ┌────────┐  ┌───────────┐  ┌────────────┐  │
 │  │memories│  │memories_fts│  │  indexes   │  │
 │  └────────┘  └───────────┘  └────────────┘  │
 └──────────────────────────────────────────────┘
 ```
 
-## Quick Start
+When an agent requests a memory, Engram performs a multi-pass FTS5 keyword search. If the syntax is malformed, it gracefully falls back to standard `LIKE` SQL queries. It deduplicates results, bumps the access timestamp, and returns a clamped array directly to the LLM.
 
-### 1. Clone
+---
 
+## ⚡ Quick Start
+
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/lalithbuilds/engram-mcp.git
 cd engram-mcp
 ```
 
 ### 2. Configure Your MCP Client
-
-Add to your MCP client config (e.g., `mcp_config.json`):
+Add Engram to your MCP configuration file (e.g., `claude_desktop_config.json` or Cursor's MCP settings):
 
 ```json
 {
@@ -79,76 +95,48 @@ Add to your MCP client config (e.g., `mcp_config.json`):
     "engram": {
       "command": "python3",
       "args": ["server.py"],
-      "cwd": "/path/to/engram-mcp"
+      "cwd": "/absolute/path/to/engram-mcp"
     }
   }
 }
 ```
 
-### 3. Done
-
-No `pip install`. No `requirements.txt`. No virtual environment. It just works.
-
-## CLI Tool
-
-A standalone terminal utility is included for human interaction:
-
-```bash
-# Save a memory
-python3 engram.py save "FastAPI runs on port 8000" --category project --importance 8
-
-# Search memories
-python3 engram.py search "FastAPI"
-
-# Recall top memories (session boot)
-python3 engram.py recall --limit 5
-
-# List all memories
-python3 engram.py list
-
-# Database stats
-python3 engram.py stats
-
-# Delete by ID
-python3 engram.py delete abc123def456
-```
-
-## Test Results (v4.1)
-
-```
-✅ INIT              ✅ TOOLS_LIST        ✅ STATS
-✅ SEARCH            ✅ SAVE              ✅ CONTEXT
-✅ EMPTY_QUERY       ✅ UNKNOWN_TOOL      ✅ SQL_INJECTION
-✅ STRING_IMPORTANCE ✅ STRING_LIMIT      ✅ NEGATIVE_IMP
-✅ HUGE_IMPORTANCE   ✅ UNICODE/EMOJI     ✅ EMPTY_SAVE
-✅ EMPTY_DELETE      ✅ EXTRACT_EMPTY     ✅ NEWLINES
-
-18/18 PASSED — 0 FAILED
-```
-
-## Design Philosophy
-
-This project follows the **Ponytail Coding Philosophy**:
-- **YAGNI** — You Aren't Gonna Need It. No feature creep.
-- **Stdlib First** — If the standard library can do it, use it.
-- **Delete > Add** — Less code = fewer bugs.
-- **Zero Cloud** — Your memory stays on your machine.
-
-## Requirements
-
-- Python 3.8+
-- That's it. Seriously.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-
-MIT — See [LICENSE](LICENSE) for details.
+### 3. Done.
+No virtual environments, no `requirements.txt`. Your agent will now automatically use the `memory_auto_context` tool when you start a new chat.
 
 ---
 
-*If you find this useful, consider giving it a ⭐ — it helps others discover the project.*
+## 🛠️ The `engram` CLI Tool
 
-*Built by [Lalith Chandra](https://github.com/lalithbuilds)*
+You are always in control of what the agent remembers. You can use the bundled `engram.py` CLI to interact with the database yourself.
+
+```bash
+# Save a new memory for the agent manually
+python3 engram.py save "We use Tailwind CSS for all styling, never raw CSS." --category frontend --importance 10
+
+# Search what the agent knows about a topic
+python3 engram.py search "Tailwind"
+
+# List all memories in the database
+python3 engram.py list
+
+# Delete a specific memory by its ID
+python3 engram.py delete abc123def456
+
+# View database size and category breakdown
+python3 engram.py stats
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Specifically, we are looking for help adding a `--json` export flag to the CLI. 
+Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## 📄 License
+
+MIT — See [LICENSE](LICENSE) for details. Built by [Lalith Chandra](https://github.com/lalithbuilds).
+
+---
+*If Engram saves you from repeating yourself to an AI, consider giving it a ⭐!*
