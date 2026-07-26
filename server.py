@@ -35,6 +35,9 @@ def get_db():
     conn.execute("PRAGMA synchronous=NORMAL;")
     if not _SCHEMA_INITIALIZED:
         conn.executescript(SCHEMA)
+        # Auto-decay: reduce importance for memories untouched for > 30 days
+        conn.execute("UPDATE memories SET importance = importance - 1 WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30")
+        conn.commit()
         _SCHEMA_INITIALIZED = True
     return conn
 
@@ -65,6 +68,12 @@ def t_auto_context(a):
         "SELECT id, category, content, importance FROM memories WHERE importance >= ? ORDER BY importance DESC, created_at DESC LIMIT ?",
         (min_imp, limit)
     ).fetchall()
+    
+    if rows:
+        ids = ",".join(f"'{r['id']}'" for r in rows)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({ids})", (now(),))
+        conn.commit()
+        
     conn.close()
 
     lines = [f"[{r['category']}] {r['content']}" for r in rows]
@@ -91,6 +100,12 @@ def t_smart_search(a):
             "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? LIMIT ?",
             (f"%{query}%", limit)
         ).fetchall()
+        
+    if rows:
+        ids = ",".join(f"'{r['id']}'" for r in rows)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ? WHERE id IN ({ids})", (now(),))
+        conn.commit()
+        
     conn.close()
 
     results = [{"id": r["id"], "category": r["category"], "content": r["content"], "importance": r["importance"]} for r in rows]
