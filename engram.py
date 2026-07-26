@@ -51,6 +51,7 @@ def cmd_save(args):
         "INSERT OR REPLACE INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count) VALUES(?,?,?,?,?,?,?,0)",
         (mid, category, content, tags, importance, now(), now())
     )
+    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
     print(f"SAVED  id={mid}  cat={category}  importance={importance}")
