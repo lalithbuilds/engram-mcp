@@ -24,11 +24,18 @@ CREATE TABLE IF NOT EXISTS memories (
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize='porter unicode61');
 """
 
+_SCHEMA_INITIALIZED = False
+
 def get_db():
+    global _SCHEMA_INITIALIZED
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
     conn.row_factory = sqlite3.Row
-    conn.executescript(SCHEMA)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    if not _SCHEMA_INITIALIZED:
+        conn.executescript(SCHEMA)
+        _SCHEMA_INITIALIZED = True
     return conn
 
 def now():

@@ -25,8 +25,10 @@ def get_db():
     if not DB_PATH.exists():
         print(f"ERROR: DB not found at {DB_PATH}. Run the MCP server first.", file=sys.stderr)
         sys.exit(1)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
 
 
