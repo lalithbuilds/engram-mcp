@@ -106,7 +106,14 @@ def cmd_list(args):
     ).fetchall()
     conn.close()
     if not rows:
-        print("Memory bank is empty.")
+        if getattr(args, 'json', False):
+            print("[]")
+        else:
+            print("Memory bank is empty.")
+        return
+    if getattr(args, 'json', False):
+        data = [dict(r) for r in rows]
+        print(json.dumps(data, indent=2))
         return
     print(f"{'ID':<14} {'CAT':<12} {'IMP':<5} {'DATE':<12} CONTENT")
     print("-" * 80)
@@ -155,7 +162,8 @@ def main():
     p_recall.add_argument("--limit", "-l", type=int, default=3)
     p_recall.add_argument("--min-importance", dest="min_importance", type=int, default=7)
 
-    sub.add_parser("list", help="List all memories")
+    p_list = sub.add_parser("list", help="List all memories")
+    p_list.add_argument("--json", action="store_true", help="Output raw JSON array")
     sub.add_parser("stats", help="DB stats")
 
     p_del = sub.add_parser("delete", help="Delete a memory by ID")
