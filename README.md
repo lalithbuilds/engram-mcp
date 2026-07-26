@@ -38,7 +38,10 @@ Existing solutions try to fix this by bolting on massive Vector Databases (Postg
 1.  **🐍 Zero Dependencies**
     Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`). No `pip install` required.
 2.  **⏳ Intelligent Auto-Decay (Forgetting Mechanism)**
-    Unlike other servers that hoard data forever, Engram tracks `access_count` and `updated_at`. If an old architectural decision hasn't been accessed by the agent in 30 days, its `importance` score automatically decays in the background. Your agent's context window stays clean and relevant.
+    Unlike other servers that hoard data forever, Engram prevents stale context poisoning by employing a background auto-decay algorithm:
+    *   Whenever an agent searches or retrieves a memory, it automatically bumps the `access_count` and updates the `updated_at` timestamp.
+    *   Whenever the MCP server spins up, it runs a background decay query: any memory that hasn't been accessed in 30 days automatically loses 1 point of `importance`.
+    Your agent's context window stays clean, relevant, and self-maintaining without manual intervention.
 3.  **🛡️ Enterprise-Grade Concurrency (WAL Mode)**
     Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes.
 4.  **🔒 Payload Bounding & Resilience**
