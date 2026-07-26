@@ -95,22 +95,22 @@ A standalone terminal utility is included for human interaction:
 
 ```bash
 # Save a memory
-python3 ray-mem.py save "FastAPI runs on port 8000" --category project --importance 8
+python3 engram.py save "FastAPI runs on port 8000" --category project --importance 8
 
 # Search memories
-python3 ray-mem.py search "FastAPI"
+python3 engram.py search "FastAPI"
 
 # Recall top memories (session boot)
-python3 ray-mem.py recall --limit 5
+python3 engram.py recall --limit 5
 
 # List all memories
-python3 ray-mem.py list
+python3 engram.py list
 
 # Database stats
-python3 ray-mem.py stats
+python3 engram.py stats
 
 # Delete by ID
-python3 ray-mem.py delete abc123def456
+python3 engram.py delete abc123def456
 ```
 
 ## Test Results (v4.1)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RAY LOCAL MEMORY MCP SERVER v4.1 — PONYTAIL EDITION (July 2026)
+ENGRAM MCP SERVER v4.1 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
@@ -8,7 +8,7 @@ import json, sys, sqlite3, hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path.home() / "ray-memory-mcp" / "memory.db"
+DB_PATH = Path.home() / "engram-mcp" / "memory.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS memories (
@@ -204,7 +204,7 @@ def handle(msg):
     if method=="initialize":
         send({"jsonrpc":"2.0","id":mid_,"result":{
             "protocolVersion":"2024-11-05","capabilities":{"tools":{}},
-            "serverInfo":{"name":"ray-memory-ponytail","version":"4.1.0"}}})
+            "serverInfo":{"name":"engram-mcp","version":"4.1.0"}}})
     elif method=="tools/list":
         send({"jsonrpc":"2.0","id":mid_,"result":{"tools":[
             {"name":n,"description":m["description"],"inputSchema":m["inputSchema"]}
@@ -218,17 +218,23 @@ def handle(msg):
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":json.dumps(r,indent=2)}],"isError":False}})
         except Exception as e:
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}})
-    elif method in ("notifications/initialized","notifications/cancelled"): pass
+            return {"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}}
+    elif method in ("notifications/initialized","notifications/cancelled"): return None
     elif mid_ is not None:
-        send({"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}})
+        return {"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}}
 
 def main():
-    sys.stderr.write(f"[ray-memory v4.1 Ponytail] Booting...\n")
+    sys.stderr.write(f"[engram-mcp v4.1] Booting...\n")
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--diagnostics": sys.exit(0)
+    init_db()
+    
     for line in sys.stdin:
-        line=line.strip()
-        if not line: continue
-        try: handle(json.loads(line))
-        except json.JSONDecodeError: pass
-        except Exception as e: sys.stderr.write(f"[ray-memory] {e}\n")
+        try:
+            req = json.loads(line)
+            if "method" in req:
+                res = handle(req)
+                if res: sys.stdout.write(json.dumps(res) + "\n"); sys.stdout.flush()
+        except Exception as e: sys.stderr.write(f"[engram-mcp] {e}\n")
 
 if __name__=="__main__": main()

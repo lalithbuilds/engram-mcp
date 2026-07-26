@@ -1,4 +1,4 @@
-# Contributing to Ray Memory MCP
+# Contributing to Engram MCP
 
 Thanks for your interest in contributing! This project follows the **Ponytail Philosophy**: keep it minimal, stdlib-only, and zero-bloat.
 
@@ -13,7 +13,7 @@ Thanks for your interest in contributing! This project follows the **Ponytail Ph
 1. Fork the repo.
 2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Make your changes. Keep them focused and small.
-4. Test manually with the CLI: `python3 ray-mem.py stats`
+4. Test manually with the CLI: `python3 engram.py stats`
 5. Commit with a clear message: `git commit -m "feat: add X"`
 6. Push and open a Pull Request.
 

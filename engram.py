@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-ray-mem — CLI wrapper for the RAY local memory DB
+engram — CLI wrapper for the Engram local memory DB
 Usage:
-  ray-mem save "your memory text" --category project --tags "tag1,tag2" --importance 8
-  ray-mem search "query"
-  ray-mem recall
-  ray-mem list
-  ray-mem stats
-  ray-mem delete <id>
+  engram save "your memory text" --category project --tags "tag1,tag2" --importance 8
+  engram search "query"
+  engram recall
+  engram list
+  engram stats
+  engram delete <id>
 """
 
 import sys
@@ -18,7 +18,7 @@ import datetime
 import argparse
 from pathlib import Path
 
-DB_PATH = Path.home() / "ray-memory-mcp" / "memory.db"
+DB_PATH = Path.home() / "engram-mcp" / "memory.db"
 
 
 def get_db():
@@ -135,7 +135,7 @@ def cmd_delete(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ray-mem — RAY local memory CLI")
+    parser = argparse.ArgumentParser(description="engram — Engram local memory CLI")
     sub = parser.add_subparsers(dest="cmd")
 
     p_save = sub.add_parser("save", help="Save a memory")
