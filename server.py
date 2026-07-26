@@ -133,7 +133,7 @@ def t_save(a):
     conn.close()
     return {"id": mid, "status": "saved", "cat": cat, "imp": imp}
 
-def t_extract_save(a):
+def t_save_block(a):
     text = a.get("text", "").strip()
     cat = a.get("category", "general")
     if not text: return {"error": "text required"}
@@ -200,7 +200,7 @@ TOOLS = {
             "required":["content"]}
     },
     "memory_save_block": {
-        "fn": t_extract_save,
+        "fn": t_save_block,
         "description": "Save a large block of text as a single memory. Note: Does not perform LLM extraction. Max 8000 chars.",
         "inputSchema": {"type":"object","properties":{
             "text":{"type":"string","description":"Text to save as a block"},
@@ -252,6 +252,9 @@ def main():
     sys.stderr.write(f"[engram-mcp v4.1] Booting...\n")
     if len(sys.argv) > 1:
         if sys.argv[1] == "--diagnostics": sys.exit(0)
+        else:
+            print("Usage: python3 server.py [--diagnostics]")
+            sys.exit(0)
     get_db()
     
     for line in sys.stdin:
