@@ -20,6 +20,24 @@ from pathlib import Path
 import os
 import server
 
+def _migrate_fts_add_category(conn):
+    """Mirror of server.py: if the FTS table predates the 'category' column,
+    rebuild it as (id, content, category) and reindex from memories so the CLI
+    stays safe even if run before the server re-boots. Idempotent."""
+    try:
+        conn.execute("SELECT category FROM memories_fts LIMIT 1")
+        return
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("DROP TABLE IF EXISTS memories_fts")
+    conn.execute("CREATE VIRTUAL TABLE memories_fts USING fts5(id, content, category, tokenize='porter unicode61')")
+    conn.executemany(
+        "INSERT INTO memories_fts (id, content, category) VALUES (?, ?, ?)",
+        [(r["id"], r["content"], r["category"]) for r in conn.execute("SELECT id, content, category FROM memories").fetchall()]
+    )
+    conn.commit()
+
+
 def get_db():
     # Reuse server's get_db to handle schema initialization properly
     return server.get_db()

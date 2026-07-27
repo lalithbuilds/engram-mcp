@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 ENGRAM MCP SERVER v4.2 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
@@ -23,11 +22,29 @@ CREATE TABLE IF NOT EXISTS memories (
     access_count INTEGER NOT NULL DEFAULT 0,
     last_accessed_at TEXT NOT NULL DEFAULT ''
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize='porter unicode61');
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, category, tokenize='porter unicode61');
 """
 
 _SCHEMA_INITIALIZED = False
 _LAST_DECAY_RUN = 0
+
+def _migrate_fts_add_category(conn):
+    """Older DBs indexed only (id, content). If 'category' is missing from the
+    FTS table, rebuild it as (id, content, category) and reindex from memories.
+    FTS5 columns can't be added in place, so a drop + recreate is required.
+    Idempotent: a no-op once the column exists."""
+    try:
+        conn.execute("SELECT category FROM memories_fts LIMIT 1")
+        return
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("DROP TABLE IF EXISTS memories_fts")
+    conn.execute("CREATE VIRTUAL TABLE memories_fts USING fts5(id, content, category, tokenize='porter unicode61')")
+    conn.executemany(
+        "INSERT INTO memories_fts (id, content, category) VALUES (?, ?, ?)",
+        [(r["id"], r["content"], r["category"]) for r in conn.execute("SELECT id, content, category FROM memories").fetchall()]
+    )
+    conn.commit()
 
 def get_db():
     global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
@@ -40,6 +57,7 @@ def get_db():
         conn.executescript(SCHEMA)
         try: conn.execute("ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT ''")
         except: pass
+        _migrate_fts_add_category(conn)
         _SCHEMA_INITIALIZED = True
         
     # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
