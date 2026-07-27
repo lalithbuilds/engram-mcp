@@ -8,3 +8,4 @@ __pycache__/
 *.sqlite
 *.sqlite3
 benchmark/data/
+longmemeval_results.json
