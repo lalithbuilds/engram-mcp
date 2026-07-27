@@ -205,7 +205,7 @@ TOOLS = {
     },
     "memory_smart_search": {
         "fn": t_smart_search,
-        "description": "Keyword search: FTS5 full-text search with LIKE fallback. Use mid-session for topic context.",
+        "description": "Search memory using FTS5. Crucial: Do NOT pass raw conversational questions. Instead, act as a query expansion engine: extract core entities and generate synonyms. For example, instead of 'What did I eat?', pass 'eat food lunch dinner meal restaurant'. Instead of 'Who is my friend?', pass 'friend person meet know'. Returns up to 5 matching memories sorted by relevance rank.",
         "inputSchema": {"type":"object","properties":{
             "query":{"type":"string","description":"Search query"},
             "limit":{"type":"integer","description":"Max 1-8, default 5"}},
