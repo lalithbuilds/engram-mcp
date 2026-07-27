@@ -26,12 +26,13 @@ jobs:
       - name: Smoke test — server imports cleanly
         run: python3 -c "import server; print('server.py OK')"
 
-      - name: Bootstrap DB (server.py creates ~/engram-mcp/memory.db on first run)
+      - name: Bootstrap DB via get_db()
         run: |
           python3 -c "
           import server
-          server.init_db()
-          print('DB initialised at', server.DB_PATH)
+          conn = server.get_db()
+          conn.close()
+          print('DB bootstrapped at:', server.DB_PATH)
           "
 
       - name: CLI — save a memory
