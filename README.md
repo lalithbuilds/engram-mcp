@@ -10,6 +10,7 @@
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-green.svg)](https://python.org)
 [![Dependencies](https://img.shields.io/badge/Dependencies-Zero-orange.svg)](#)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP-purple.svg)](https://modelcontextprotocol.io)
+[![CI](https://github.com/lalithbuilds/engram-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/lalithbuilds/engram-mcp/actions/workflows/ci.yml)
 
 Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
