@@ -4,7 +4,7 @@ ENGRAM MCP SERVER v4.2 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
-import json, sys, sqlite3, hashlib
+import json, sys, sqlite3, hashlib, re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,7 +45,7 @@ def get_db():
     # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
     import time
     if time.time() - _LAST_DECAY_RUN > 3600:
-        conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30", (now(),))
+        conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(created_at) > 30 AND julianday('now') - julianday(updated_at) >= 1", (now(),))
         conn.commit()
         _LAST_DECAY_RUN = time.time()
     return conn
@@ -81,7 +81,7 @@ def t_auto_context(a):
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})", [now()] + ids)
         conn.commit()
         
     conn.close()
@@ -99,29 +99,32 @@ def t_smart_search(a):
     if not query: return {"error": "query required"}
 
     conn = get_db()
-    if not query.isascii():
+    query_clean = re.sub(r'[^\w\s]', ' ', query).strip()
+    
+    if not query_clean:
+        # Fallback if query was entirely punctuation
+        query_clean = query
+
+    try:
+        # FTS5 bm25 rank is negative (lower is better). We subtract importance * 0.5 to boost high-importance memories.
+        rows = conn.execute("""
+            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
+            FROM memories_fts f JOIN memories m ON f.id=m.id
+            WHERE memories_fts MATCH ? 
+            ORDER BY (rank - (m.importance * 0.5)) 
+            LIMIT ?
+        """, (query_clean, limit)).fetchall()
+    except Exception as e:
+        sys.stderr.write(f"[FTS5 Error] {e} - Falling back to LIKE query.\n")
         rows = conn.execute(
-            "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? LIMIT ?",
+            "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? ORDER BY importance DESC LIMIT ?",
             (f"%{query}%", limit)
         ).fetchall()
-    else:
-        try:
-            rows = conn.execute("""
-                SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
-                FROM memories_fts f JOIN memories m ON f.id=m.id
-                WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?
-            """, (query, limit)).fetchall()
-        except Exception as e:
-            sys.stderr.write(f"[FTS5 Error] {e} - Falling back to LIKE query.\n")
-            rows = conn.execute(
-                "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? LIMIT ?",
-                (f"%{query}%", limit)
-            ).fetchall()
         
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})", [now()] + ids)
         conn.commit()
         
     conn.close()
@@ -136,7 +139,10 @@ def t_save(a):
     cat = a.get("category", "general")
     tags = a.get("tags", "")
     imp = safe_int(a.get("importance", 5), 5, 1, 10)
-    mid = make_id(content)
+    
+    # Use provided ID to allow editing, otherwise hash the content
+    provided_id = a.get("id", "").strip()
+    mid = provided_id if provided_id else make_id(content)
 
     conn = get_db()
     conn.execute(
@@ -158,9 +164,10 @@ def t_save_block(a):
     if not text: return {"error": "text required"}
     imp = safe_int(a.get("base_importance", 6), 6, 1, 10)
 
-    mid = make_id(text)
-    conn = get_db()
     content = text[:MAX_CONTENT]
+    mid = make_id(content)
+    
+    conn = get_db()
     conn.execute(
         """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
            VALUES(?,?,?,?,?,?,?,0,?) 
@@ -215,6 +222,7 @@ TOOLS = {
         "fn": t_save,
         "description": "Save one memory with category, tags, importance (1-10). Auto-deduplication. Max 8000 chars.",
         "inputSchema": {"type":"object","properties":{
+            "id":{"type":"string","description":"Optional ID of an existing memory to edit it in place"},
             "content":{"type":"string"},
             "category":{"type":"string","description":"project|preference|workflow|decision|fact|person|general"},
             "tags":{"type":"string"},

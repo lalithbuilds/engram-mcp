@@ -16,6 +16,7 @@ import sqlite3
 import hashlib
 import datetime
 import argparse
+import re
 from pathlib import Path
 import os
 import server
@@ -58,29 +59,30 @@ def cmd_search(args):
     query = " ".join(args.query)
     limit = args.limit or 5
     conn = get_db()
-    if not query.isascii():
+    query_clean = re.sub(r'[^\w\s]', ' ', query).strip()
+    
+    if not query_clean:
+        query_clean = query
+
+    try:
+        rows = conn.execute("""
+            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
+            FROM memories_fts f JOIN memories m ON f.id=m.id
+            WHERE memories_fts MATCH ? 
+            ORDER BY (rank - (m.importance * 0.5)) 
+            LIMIT ?
+        """, (query_clean, limit)).fetchall()
+    except Exception as e:
+        print(f"[FTS5 Error] {e} - Falling back to LIKE query.", file=sys.stderr)
         rows = conn.execute(
-            "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? LIMIT ?",
+            "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? ORDER BY importance DESC LIMIT ?",
             (f"%{query}%", limit)
         ).fetchall()
-    else:
-        try:
-            rows = conn.execute("""
-                SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
-                FROM memories_fts f JOIN memories m ON f.id=m.id
-                WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?
-            """, (query, limit)).fetchall()
-        except Exception as e:
-            print(f"[FTS5 Error] {e} - Falling back to LIKE query.", file=sys.stderr)
-            rows = conn.execute(
-                "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? LIMIT ?",
-                (f"%{query}%", limit)
-            ).fetchall()
         
     if rows:
         ids = [r['id'] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
+        conn.execute(f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})", [now()] + ids)
         conn.commit()
         
     conn.close()
