@@ -85,6 +85,10 @@ def cmd_search(args):
         conn.commit()
         
     conn.close()
+    if getattr(args, "json", False):
+        res = [dict(r) for r in rows]
+        print(json.dumps(res, indent=2))
+        return
     if not rows:
         print("No results.")
         return
@@ -110,6 +114,10 @@ def cmd_recall(args):
         conn.commit()
         
     conn.close()
+    if getattr(args, "json", False):
+        res = [dict(r) for r in rows]
+        print(json.dumps(res, indent=2))
+        return
     if not rows:
         print("No high-importance memories.")
         return
@@ -124,6 +132,10 @@ def cmd_list(args):
         "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC,created_at DESC LIMIT 50"
     ).fetchall()
     conn.close()
+    if getattr(args, "json", False):
+        res = [dict(r) for r in rows]
+        print(json.dumps(res, indent=2))
+        return
     if not rows:
         print("Memory bank is empty.")
         return
@@ -140,6 +152,15 @@ def cmd_stats(args):
     cats  = conn.execute("SELECT category, COUNT(*) as c FROM memories GROUP BY category ORDER BY c DESC").fetchall()
     conn.close()
     size = DB_PATH.stat().st_size
+    if getattr(args, "json", False):
+        res = {
+            "total_memories": total,
+            "db_size_bytes": size,
+            "db_path": str(DB_PATH),
+            "categories": {r["category"]: r["c"] for r in cats}
+        }
+        print(json.dumps(res, indent=2))
+        return
     print(f"TOTAL MEMORIES : {total}")
     print(f"DB SIZE        : {size:,} bytes  ({size//1024} KB)")
     print(f"DB PATH        : {DB_PATH}")
@@ -170,13 +191,18 @@ def main():
     p_search = sub.add_parser("search", help="Search memories")
     p_search.add_argument("query", nargs="+")
     p_search.add_argument("--limit", "-l", type=int, default=5)
+    p_search.add_argument("--json", action="store_true", help="Output results as JSON")
 
     p_recall = sub.add_parser("recall", help="Recall top memories (session start)")
     p_recall.add_argument("--limit", "-l", type=int, default=3)
     p_recall.add_argument("--min-importance", dest="min_importance", type=int, default=7)
+    p_recall.add_argument("--json", action="store_true", help="Output results as JSON")
 
-    sub.add_parser("list", help="List all memories")
-    sub.add_parser("stats", help="DB stats")
+    p_list = sub.add_parser("list", help="List all memories")
+    p_list.add_argument("--json", action="store_true", help="Output results as JSON")
+
+    p_stats = sub.add_parser("stats", help="DB stats")
+    p_stats.add_argument("--json", action="store_true", help="Output results as JSON")
 
     p_del = sub.add_parser("delete", help="Delete a memory by ID")
     p_del.add_argument("id")
