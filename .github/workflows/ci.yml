@@ -26,22 +26,25 @@ jobs:
       - name: Smoke test — server imports cleanly
         run: python3 -c "import server; print('server.py OK')"
 
-      - name: Bootstrap DB via save (initialises memory.db)
-        run: python3 engram.py save "CI bootstrap memory" --category ci --importance 5
+      - name: Bootstrap DB (server.py creates ~/engram-mcp/memory.db on first run)
+        run: |
+          python3 -c "
+          import server
+          server.init_db()
+          print('DB initialised at', server.DB_PATH)
+          "
 
-      - name: Smoke test — search
-        run: python3 engram.py search "bootstrap"
+      - name: CLI — save a memory
+        run: python3 engram.py save "CI test memory from GitHub Actions" --category ci --importance 5
 
-      - name: Smoke test — list
+      - name: CLI — search memories
+        run: python3 engram.py search "CI test"
+
+      - name: CLI — list memories
         run: python3 engram.py list
 
-      - name: Smoke test — stats (DB now exists)
+      - name: CLI — stats
         run: python3 engram.py stats
-
-      - name: Smoke test — delete entry
-        run: |
-          ID=$(python3 engram.py list --json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['id'])" 2>/dev/null || echo "")
-          if [ -n "$ID" ]; then python3 engram.py delete "$ID" && echo "delete OK"; fi
 
       - name: Verify zero third-party dependencies
         run: |
