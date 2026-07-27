@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 ENGRAM MCP SERVER v4.1 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
@@ -22,11 +21,29 @@ CREATE TABLE IF NOT EXISTS memories (
     access_count INTEGER NOT NULL DEFAULT 0,
     last_accessed_at TEXT NOT NULL DEFAULT ''
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize='porter unicode61');
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, category, tokenize='porter unicode61');
 """
 
 _SCHEMA_INITIALIZED = False
 _LAST_DECAY_RUN = 0
+
+def _migrate_fts_add_category(conn):
+    """Older DBs indexed only (id, content). If 'category' is missing from the
+    FTS table, rebuild it as (id, content, category) and reindex from memories.
+    FTS5 columns can't be added in place, so a drop + recreate is required.
+    Idempotent: a no-op once the column exists."""
+    try:
+        conn.execute("SELECT category FROM memories_fts LIMIT 1")
+        return
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("DROP TABLE IF EXISTS memories_fts")
+    conn.execute("CREATE VIRTUAL TABLE memories_fts USING fts5(id, content, category, tokenize='porter unicode61')")
+    conn.executemany(
+        "INSERT INTO memories_fts (id, content, category) VALUES (?, ?, ?)",
+        [(r["id"], r["content"], r["category"]) for r in conn.execute("SELECT id, content, category FROM memories").fetchall()]
+    )
+    conn.commit()
 
 def get_db():
     global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
@@ -39,6 +56,7 @@ def get_db():
         conn.executescript(SCHEMA)
         try: conn.execute("ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT ''")
         except: pass
+        _migrate_fts_add_category(conn)
         _SCHEMA_INITIALIZED = True
         
     # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
@@ -102,7 +120,7 @@ def t_smart_search(a):
         rows = conn.execute("""
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
-            WHERE memories_fts MATCH ? ORDER BY rank, m.importance DESC LIMIT ?
+            WHERE memories_fts MATCH ? ORDER BY bm25(memories_fts, 0.0, 10.0, 1.0), m.importance DESC LIMIT ?
         """, (query, limit)).fetchall()
     except Exception:
         rows = conn.execute(
@@ -138,7 +156,7 @@ def t_save(a):
            category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, tags, imp, now(), now(), now())
     )
-    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
+    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content, category) VALUES (?, ?, ?)", (mid, content, cat))
     conn.commit()
     conn.close()
     return {"id": mid, "status": "saved", "cat": cat, "imp": imp}
@@ -159,7 +177,7 @@ def t_save_block(a):
            category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, "", imp, now(), now(), now())
     )
-    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
+    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content, category) VALUES (?, ?, ?)", (mid, content, cat))
     conn.commit()
     conn.close()
     return {"saved": [{"id": mid, "preview": text[:50]}], "saved_n": 1, "skipped": 0}

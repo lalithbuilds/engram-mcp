@@ -21,6 +21,24 @@ from pathlib import Path
 DB_PATH = Path.home() / "engram-mcp" / "memory.db"
 
 
+def _migrate_fts_add_category(conn):
+    """Mirror of server.py: if the FTS table predates the 'category' column,
+    rebuild it as (id, content, category) and reindex from memories so the CLI
+    stays safe even if run before the server re-boots. Idempotent."""
+    try:
+        conn.execute("SELECT category FROM memories_fts LIMIT 1")
+        return
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("DROP TABLE IF EXISTS memories_fts")
+    conn.execute("CREATE VIRTUAL TABLE memories_fts USING fts5(id, content, category, tokenize='porter unicode61')")
+    conn.executemany(
+        "INSERT INTO memories_fts (id, content, category) VALUES (?, ?, ?)",
+        [(r["id"], r["content"], r["category"]) for r in conn.execute("SELECT id, content, category FROM memories").fetchall()]
+    )
+    conn.commit()
+
+
 def get_db():
     if not DB_PATH.exists():
         print(f"ERROR: DB not found at {DB_PATH}. Run the MCP server first.", file=sys.stderr)
@@ -29,6 +47,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
+    _migrate_fts_add_category(conn)
     conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30", (now(),))
     conn.commit()
     return conn
@@ -56,7 +75,7 @@ def cmd_save(args):
            category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, category, content, tags, importance, now(), now(), now())
     )
-    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
+    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content, category) VALUES (?, ?, ?)", (mid, content, category))
     conn.commit()
     conn.close()
     print(f"SAVED  id={mid}  cat={category}  importance={importance}")
@@ -70,7 +89,7 @@ def cmd_search(args):
         rows = conn.execute("""
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
-            WHERE memories_fts MATCH ? ORDER BY rank, m.importance DESC LIMIT ?
+            WHERE memories_fts MATCH ? ORDER BY bm25(memories_fts, 0.0, 10.0, 1.0), m.importance DESC LIMIT ?
         """, (query, limit)).fetchall()
     except:
         rows = conn.execute(
