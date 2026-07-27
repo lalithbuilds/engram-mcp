@@ -18,7 +18,8 @@ import datetime
 import argparse
 from pathlib import Path
 
-DB_PATH = Path.home() / "engram-mcp" / "memory.db"
+import os
+DB_PATH = Path(os.environ.get("ENGRAM_DB_PATH", Path.home() / "engram-mcp" / "memory.db"))
 
 
 def get_db():
@@ -29,8 +30,6 @@ def get_db():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30", (now(),))
-    conn.commit()
     return conn
 
 

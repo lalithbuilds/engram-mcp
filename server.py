@@ -8,7 +8,8 @@ import json, sys, sqlite3, hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path.home() / "engram-mcp" / "memory.db"
+import os
+DB_PATH = Path(os.environ.get("ENGRAM_DB_PATH", Path.home() / "engram-mcp" / "memory.db"))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS memories (
@@ -256,7 +257,6 @@ def handle(msg):
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":json.dumps(r,indent=2)}],"isError":False}})
         except Exception as e:
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}})
-            return
     elif method in ("notifications/initialized","notifications/cancelled"): return None
     elif mid_ is not None:
         return {"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}}
