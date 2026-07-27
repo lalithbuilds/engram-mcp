@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ENGRAM MCP SERVER v4.1 — PONYTAIL EDITION (July 2026)
+ENGRAM MCP SERVER v4.2 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
@@ -243,7 +243,7 @@ def handle(msg):
     if method=="initialize":
         send({"jsonrpc":"2.0","id":mid_,"result":{
             "protocolVersion":"2024-11-05","capabilities":{"tools":{}},
-            "serverInfo":{"name":"engram-mcp","version":"4.1.0"}}})
+            "serverInfo":{"name":"engram-mcp","version":"4.2.0"}}})
     elif method=="tools/list":
         send({"jsonrpc":"2.0","id":mid_,"result":{"tools":[
             {"name":n,"description":m["description"],"inputSchema":m["inputSchema"]}
@@ -262,7 +262,7 @@ def handle(msg):
         return {"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}}
 
 def main():
-    sys.stderr.write(f"[engram-mcp v4.1] Booting...\n")
+    sys.stderr.write(f"[engram-mcp v4.2] Booting...\n")
     if len(sys.argv) > 1:
         if sys.argv[1] == "--diagnostics": sys.exit(0)
         else:
