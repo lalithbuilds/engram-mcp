@@ -1,0 +1,72 @@
+import os
+import unittest
+import tempfile
+from pathlib import Path
+import sqlite3
+
+# Set the DB path to a temporary file before importing server
+temp_dir = tempfile.TemporaryDirectory()
+os.environ["ENGRAM_DB_PATH"] = str(Path(temp_dir.name) / "test_memory.db")
+
+import server
+
+class TestEngramMCP(unittest.TestCase):
+    def setUp(self):
+        self.conn = server.get_db()
+        # Ensure fresh state for each test
+        self.conn.execute("DELETE FROM memories")
+        self.conn.execute("DELETE FROM memories_fts")
+        self.conn.commit()
+
+    def tearDown(self):
+        self.conn.close()
+
+    def test_schema_initialized(self):
+        # Verify tables exist
+        tables = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        table_names = [t[0] for t in tables]
+        self.assertIn("memories", table_names)
+        self.assertIn("memories_fts", table_names)
+
+    def test_save_and_deduplication(self):
+        # Save a memory
+        result1 = server.t_save({"category": "test", "content": "Hello World", "tags": "greeting", "importance": 7})
+        self.assertEqual(result1.get("status"), "saved")
+        
+        # Save exact same content to test dedup
+        result2 = server.t_save({"category": "test", "content": "Hello World", "tags": "greeting", "importance": 7})
+        self.assertEqual(result1["id"], result2["id"])
+
+        # Check DB row count (should be 1)
+        count = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+        fts_count = self.conn.execute("SELECT COUNT(*) FROM memories_fts").fetchone()[0]
+        self.assertEqual(count, 1)
+        self.assertEqual(fts_count, 1) # FTS5 dedup fix verification
+
+    def test_smart_search(self):
+        server.t_save({"category": "test", "content": "The quick brown fox jumps over the lazy dog", "tags": "fox", "importance": 5})
+        server.t_save({"category": "test", "content": "Something entirely different", "tags": "diff", "importance": 5})
+        
+        results = server.t_smart_search({"query": "fox"})
+        self.assertIn("results", results)
+        self.assertEqual(len(results["results"]), 1)
+        self.assertIn("quick brown fox", results["results"][0]["content"])
+        
+    def test_cjk_search(self):
+        server.t_save({"category": "test", "content": "日本語のテスト", "tags": "cjk", "importance": 5})
+        # This will use the LIKE fallback
+        results = server.t_smart_search({"query": "テスト"})
+        self.assertEqual(len(results["results"]), 1)
+        self.assertIn("日本語", results["results"][0]["content"])
+
+    def test_auto_context(self):
+        server.t_save({"category": "c1", "content": "Low importance", "importance": 2})
+        server.t_save({"category": "c2", "content": "High importance", "importance": 10})
+        
+        ctx = server.t_auto_context({"limit": 5, "min_importance": 5})
+        self.assertEqual(ctx["n"], 1)
+        self.assertIn("c2", ctx["ctx"])
+        self.assertIn("High importance", ctx["ctx"])
+
+if __name__ == '__main__':
+    unittest.main()

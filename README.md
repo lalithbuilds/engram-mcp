@@ -38,6 +38,16 @@ Existing solutions try to fix this by bolting on massive Vector Databases (Postg
 
 ---
 
+## Why This Exists (Vs The Ecosystem)
+
+The AI agent memory ecosystem (like **Letta/MemGPT** or **AgentMemory**) is currently dominated by heavy frameworks requiring Postgres, pgvector, 15+ dependencies, and cloud embedding models. 
+
+**Engram is the "Occam's Razor" alternative.** It rejects semantic vector embeddings in favor of blazing-fast SQLite FTS5 (BM25 keyword search). 
+* You don't need a 768-dimensional vector embedding to remember that you prefer `pnpm` over `npm`. 
+* You don't need an external API call to recall your project's architecture. 
+
+Engram is for developers who want **100% local, zero-dependency, zero-bloat** agent memory that works completely offline and runs in <2ms.
+
 ## 🚀 Core Capabilities & Features
 
 1.  **🐍 Zero Dependencies**

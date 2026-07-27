@@ -17,9 +17,8 @@ import hashlib
 import datetime
 import argparse
 from pathlib import Path
-
-DB_PATH = Path.home() / "engram-mcp" / "memory.db"
-
+import os
+import server
 
 def _migrate_fts_add_category(conn):
     """Mirror of server.py: if the FTS table predates the 'category' column,
@@ -40,17 +39,8 @@ def _migrate_fts_add_category(conn):
 
 
 def get_db():
-    if not DB_PATH.exists():
-        print(f"ERROR: DB not found at {DB_PATH}. Run the MCP server first.", file=sys.stderr)
-        sys.exit(1)
-    conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-    _migrate_fts_add_category(conn)
-    conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(updated_at) > 30", (now(),))
-    conn.commit()
-    return conn
+    # Reuse server's get_db to handle schema initialization properly
+    return server.get_db()
 
 
 def now():
@@ -75,7 +65,8 @@ def cmd_save(args):
            category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, category, content, tags, importance, now(), now(), now())
     )
-    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content, category) VALUES (?, ?, ?)", (mid, content, category))
+    conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
+    conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
     print(f"SAVED  id={mid}  cat={category}  importance={importance}")
@@ -85,17 +76,24 @@ def cmd_search(args):
     query = " ".join(args.query)
     limit = args.limit or 5
     conn = get_db()
-    try:
-        rows = conn.execute("""
-            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
-            FROM memories_fts f JOIN memories m ON f.id=m.id
-            WHERE memories_fts MATCH ? ORDER BY bm25(memories_fts, 0.0, 10.0, 1.0), m.importance DESC LIMIT ?
-        """, (query, limit)).fetchall()
-    except:
+    if not query.isascii():
         rows = conn.execute(
             "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? LIMIT ?",
             (f"%{query}%", limit)
         ).fetchall()
+    else:
+        try:
+            rows = conn.execute("""
+                SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
+                FROM memories_fts f JOIN memories m ON f.id=m.id
+                WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?
+            """, (query, limit)).fetchall()
+        except Exception as e:
+            print(f"[FTS5 Error] {e} - Falling back to LIKE query.", file=sys.stderr)
+            rows = conn.execute(
+                "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? LIMIT ?",
+                (f"%{query}%", limit)
+            ).fetchall()
         
     if rows:
         ids = [r['id'] for r in rows]
@@ -158,10 +156,10 @@ def cmd_stats(args):
     total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
     cats  = conn.execute("SELECT category, COUNT(*) as c FROM memories GROUP BY category ORDER BY c DESC").fetchall()
     conn.close()
-    size = DB_PATH.stat().st_size
+    size = server.DB_PATH.stat().st_size
     print(f"TOTAL MEMORIES : {total}")
     print(f"DB SIZE        : {size:,} bytes  ({size//1024} KB)")
-    print(f"DB PATH        : {DB_PATH}")
+    print(f"DB PATH        : {server.DB_PATH}")
     print(f"\nCATEGORIES:")
     for r in cats:
         print(f"  {r['category']:<20} {r['c']} memories")

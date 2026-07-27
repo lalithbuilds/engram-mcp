@@ -1,5 +1,5 @@
 """
-ENGRAM MCP SERVER v4.1 — PONYTAIL EDITION (July 2026)
+ENGRAM MCP SERVER v4.2 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
@@ -7,7 +7,8 @@ import json, sys, sqlite3, hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path.home() / "engram-mcp" / "memory.db"
+import os
+DB_PATH = Path(os.environ.get("ENGRAM_DB_PATH", Path.home() / "engram-mcp" / "memory.db"))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS memories (
@@ -116,17 +117,24 @@ def t_smart_search(a):
     if not query: return {"error": "query required"}
 
     conn = get_db()
-    try:
-        rows = conn.execute("""
-            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
-            FROM memories_fts f JOIN memories m ON f.id=m.id
-            WHERE memories_fts MATCH ? ORDER BY bm25(memories_fts, 0.0, 10.0, 1.0), m.importance DESC LIMIT ?
-        """, (query, limit)).fetchall()
-    except Exception:
+    if not query.isascii():
         rows = conn.execute(
             "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? LIMIT ?",
             (f"%{query}%", limit)
         ).fetchall()
+    else:
+        try:
+            rows = conn.execute("""
+                SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
+                FROM memories_fts f JOIN memories m ON f.id=m.id
+                WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?
+            """, (query, limit)).fetchall()
+        except Exception as e:
+            sys.stderr.write(f"[FTS5 Error] {e} - Falling back to LIKE query.\n")
+            rows = conn.execute(
+                "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? LIMIT ?",
+                (f"%{query}%", limit)
+            ).fetchall()
         
     if rows:
         ids = [r['id'] for r in rows]
@@ -156,7 +164,8 @@ def t_save(a):
            category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, tags, imp, now(), now(), now())
     )
-    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content, category) VALUES (?, ?, ?)", (mid, content, cat))
+    conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
+    conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
     return {"id": mid, "status": "saved", "cat": cat, "imp": imp}
@@ -177,7 +186,8 @@ def t_save_block(a):
            category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, "", imp, now(), now(), now())
     )
-    conn.execute("INSERT OR REPLACE INTO memories_fts (id, content, category) VALUES (?, ?, ?)", (mid, content, cat))
+    conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
+    conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
     return {"saved": [{"id": mid, "preview": text[:50]}], "saved_n": 1, "skipped": 0}
@@ -208,7 +218,6 @@ TOOLS = {
         "fn": t_auto_context,
         "description": "Session boot: returns top memories + category map. Call ONCE at session start. Hard cap 8 results.",
         "inputSchema": {"type":"object","properties":{
-            "topic":{"type":"string","description":"Current task topic (optional)"},
             "limit":{"type":"integer","description":"Max results 1-8, default 5"},
             "min_importance":{"type":"integer","description":"Min importance 1-10, default 7"}}}
     },
@@ -260,7 +269,7 @@ def handle(msg):
     if method=="initialize":
         send({"jsonrpc":"2.0","id":mid_,"result":{
             "protocolVersion":"2024-11-05","capabilities":{"tools":{}},
-            "serverInfo":{"name":"engram-mcp","version":"4.1.0"}}})
+            "serverInfo":{"name":"engram-mcp","version":"4.2.0"}}})
     elif method=="tools/list":
         send({"jsonrpc":"2.0","id":mid_,"result":{"tools":[
             {"name":n,"description":m["description"],"inputSchema":m["inputSchema"]}
@@ -274,15 +283,24 @@ def handle(msg):
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":json.dumps(r,indent=2)}],"isError":False}})
         except Exception as e:
             send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}})
-            return
     elif method in ("notifications/initialized","notifications/cancelled"): return None
     elif mid_ is not None:
         return {"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}}
 
 def main():
-    sys.stderr.write(f"[engram-mcp v4.1] Booting...\n")
+    sys.stderr.write(f"[engram-mcp v4.2] Booting...\n")
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--diagnostics": sys.exit(0)
+        if sys.argv[1] == "--diagnostics":
+            try:
+                conn = get_db()
+                row_count = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+                integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+                print(f"Database Path: {DB_PATH}")
+                print(f"Memory Count:  {row_count}")
+                print(f"Integrity:     {integrity}")
+            except Exception as e:
+                print(f"Diagnostics Error: {e}")
+            sys.exit(0)
         else:
             print("Usage: python3 server.py [--diagnostics]")
             sys.exit(0)
