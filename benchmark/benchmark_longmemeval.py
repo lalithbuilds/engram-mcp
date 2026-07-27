@@ -93,8 +93,10 @@ def evaluate_single_item(conn, item):
     if is_unanswerable:
         return False, True  
     
-    # Check if answer text appears in retrieved results
-    correct = any(str(answer).lower() in str(text).lower() for text in result_texts)
+    import re
+    # Check if answer text appears in retrieved results using precise word boundaries
+    pattern = r'\b' + re.escape(str(answer).lower()) + r'\b'
+    correct = any(re.search(pattern, str(text).lower()) for text in result_texts)
     return correct, False
 
 def run_benchmark(dataset_path, output_file="longmemeval_results.json"):

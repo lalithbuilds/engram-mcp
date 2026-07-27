@@ -27,6 +27,8 @@ Existing solutions try to fix this by bolting on massive Vector Databases (Postg
 
 **Engram MCP** is a ruthlessly optimized, zero-dependency alternative. It uses standard **SQLite FTS5 (Full-Text Search)** to achieve blazing-fast keyword retrieval entirely locally. You simply drop the `server.py` script into your MCP configuration, and your agent instantly gains the ability to remember, recall, and manage its own long-term memory across sessions.
 
+![Engram Demo](demo.gif)
+
 ### Key Benefits
 
 *   **Stop Repeating Yourself:** Teach your agent your preferences, tech stack, and architectural decisions *once*. It will automatically recall them on the next boot.
