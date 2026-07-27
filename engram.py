@@ -70,7 +70,8 @@ def cmd_search(args):
                 FROM memories_fts f JOIN memories m ON f.id=m.id
                 WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?
             """, (query, limit)).fetchall()
-        except:
+        except Exception as e:
+            print(f"[FTS5 Error] {e} - Falling back to LIKE query.", file=sys.stderr)
             rows = conn.execute(
                 "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? LIMIT ?",
                 (f"%{query}%", limit)

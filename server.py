@@ -111,7 +111,8 @@ def t_smart_search(a):
                 FROM memories_fts f JOIN memories m ON f.id=m.id
                 WHERE memories_fts MATCH ? ORDER BY rank LIMIT ?
             """, (query, limit)).fetchall()
-        except Exception:
+        except Exception as e:
+            sys.stderr.write(f"[FTS5 Error] {e} - Falling back to LIKE query.\n")
             rows = conn.execute(
                 "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? LIMIT ?",
                 (f"%{query}%", limit)
