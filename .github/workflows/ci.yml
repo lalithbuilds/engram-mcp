@@ -26,7 +26,7 @@ jobs:
       - name: Smoke test — server imports cleanly
         run: python3 -c "import server; print('server.py OK')"
 
-      - name: Bootstrap DB via get_db()
+      - name: Bootstrap DB via server.get_db()
         run: |
           python3 -c "
           import server
@@ -50,18 +50,37 @@ jobs:
       - name: Verify zero third-party dependencies
         run: |
           python3 -c "
-          import ast, sys
-          with open('server.py') as f:
-              tree = ast.parse(f.read())
-          stdlib = {'json','sqlite3','hashlib','sys','os','pathlib','datetime','threading','time','logging'}
-          for node in ast.walk(tree):
-              if isinstance(node, (ast.Import, ast.ImportFrom)):
-                  names = [n.name for n in getattr(node, 'names', [])]
-                  mod = getattr(node, 'module', '') or ''
-                  for name in names + ([mod] if mod else []):
-                      top = name.split('.')[0]
-                      if top and top not in stdlib and top not in sys.stdlib_module_names:
-                          print(f'FAIL: unexpected import: {top}')
-                          sys.exit(1)
+          import ast, sys, importlib.util
+
+          def is_stdlib(name):
+              # sys.stdlib_module_names available Python 3.10+; fall back to util check
+              if hasattr(sys, 'stdlib_module_names'):
+                  return name in sys.stdlib_module_names
+              spec = importlib.util.find_spec(name)
+              if spec is None:
+                  return False
+              loc = getattr(spec, 'origin', '') or ''
+              return 'site-packages' not in loc
+
+          third_party = set()
+          for fname in ('server.py', 'engram.py'):
+              with open(fname) as f:
+                  tree = ast.parse(f.read())
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          top = alias.name.split('.')[0]
+                          if top and not is_stdlib(top):
+                              third_party.add(top)
+                  elif isinstance(node, ast.ImportFrom):
+                      # 'from datetime import timezone' -> module=datetime (stdlib)
+                      if node.module:
+                          top = node.module.split('.')[0]
+                          if top and not is_stdlib(top):
+                              third_party.add(top)
+
+          if third_party:
+              print('FAIL: third-party imports found:', third_party)
+              sys.exit(1)
           print('PASS: zero third-party dependencies confirmed')
           "
