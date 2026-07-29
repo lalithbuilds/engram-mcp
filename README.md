@@ -54,7 +54,7 @@ Engram is for developers who want **100% local, zero-dependency, zero-bloat** ag
     Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`). No `pip install` required.
 2.  **⏳ Intelligent Auto-Decay (Forgetting Mechanism)**
     Unlike other servers that hoard data forever, Engram prevents stale context poisoning by employing a background auto-decay algorithm:
-    *   Whenever an agent searches or retrieves a memory, it automatically bumps the `access_count` and updates the `updated_at` timestamp.
+    *   Whenever an agent searches or retrieves a memory, it automatically bumps the `access_count` to signal importance.
     *   Whenever the MCP server spins up, it runs a background decay query: any memory that hasn't been accessed in 30 days automatically loses 1 point of `importance`.
     Your agent's context window stays clean, relevant, and self-maintaining without manual intervention.
 3.  **🛡️ Enterprise-Grade Concurrency (WAL Mode)**
