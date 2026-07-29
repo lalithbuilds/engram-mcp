@@ -49,7 +49,7 @@ def get_db():
             conn.execute(
                 "ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT ''"
             )
-        except:
+        except sqlite3.OperationalError:
             pass
         _SCHEMA_INITIALIZED = True
 
