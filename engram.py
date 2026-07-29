@@ -10,16 +10,14 @@ Usage:
   engram delete <id>
 """
 
-import sys
-import json
-import sqlite3
-import hashlib
-import datetime
 import argparse
+import datetime
+import hashlib
 import re
-from pathlib import Path
-import os
+import sys
+
 import server
+
 
 def get_db():
     # Reuse server's get_db to handle schema initialization properly
@@ -35,9 +33,9 @@ def make_id(content):
 
 
 def cmd_save(args):
-    content    = " ".join(args.content)
-    category   = args.category or "general"
-    tags       = args.tags or ""
+    content = " ".join(args.content)
+    category = args.category or "general"
+    tags = args.tags or ""
     importance = args.importance or 5
     mid = make_id(content)
     conn = get_db()
@@ -46,7 +44,7 @@ def cmd_save(args):
            VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
            category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
-        (mid, category, content, tags, importance, now(), now(), now())
+        (mid, category, content, tags, importance, now(), now(), now()),
     )
     conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
     conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
@@ -59,32 +57,41 @@ def cmd_search(args):
     query = " ".join(args.query)
     limit = args.limit or 5
     conn = get_db()
-    query_clean = re.sub(r'[^\w\s]', ' ', query).strip()
-    
+    query_clean = re.sub(r"[^\w\s]", " ", query).strip()
+
     if not query_clean:
         query_clean = query
 
     try:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
             ORDER BY (rank - (m.importance * 0.5)) 
             LIMIT ?
-        """, (query_clean, limit)).fetchall()
+        """,
+            (query_clean, limit),
+        ).fetchall()
     except Exception as e:
         print(f"[FTS5 Error] {e} - Falling back to LIKE query.", file=sys.stderr)
+        rows = []
+
+    if not rows:
         rows = conn.execute(
             "SELECT id,category,content,tags,importance,created_at FROM memories WHERE content LIKE ? ORDER BY importance DESC LIMIT ?",
-            (f"%{query}%", limit)
+            (f"%{query}%", limit),
         ).fetchall()
-        
+
     if rows:
-        ids = [r['id'] for r in rows]
+        ids = [r["id"] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(
+            f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})",
+            [now()] + ids,
+        )
         conn.commit()
-        
+
     conn.close()
     if not rows:
         print("No results.")
@@ -101,15 +108,18 @@ def cmd_recall(args):
     conn = get_db()
     rows = conn.execute(
         "SELECT id,category,content,tags,importance FROM memories WHERE importance>=? ORDER BY importance DESC LIMIT ?",
-        (min_imp, limit)
+        (min_imp, limit),
     ).fetchall()
-    
+
     if rows:
-        ids = [r['id'] for r in rows]
+        ids = [r["id"] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, updated_at = ?, last_accessed_at = ? WHERE id IN ({placeholders})", [now(), now()] + ids)
+        conn.execute(
+            f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})",
+            [now()] + ids,
+        )
         conn.commit()
-        
+
     conn.close()
     if not rows:
         print("No high-importance memories.")
@@ -131,20 +141,24 @@ def cmd_list(args):
     print(f"{'ID':<14} {'CAT':<12} {'IMP':<5} {'DATE':<12} CONTENT")
     print("-" * 80)
     for r in rows:
-        preview = r["content"][:45].replace("\n"," ")
-        print(f"{r['id']:<14} {r['category']:<12} {r['importance']:<5} {r['created_at'][:10]:<12} {preview}")
+        preview = r["content"][:45].replace("\n", " ")
+        print(
+            f"{r['id']:<14} {r['category']:<12} {r['importance']:<5} {r['created_at'][:10]:<12} {preview}"
+        )
 
 
 def cmd_stats(args):
     conn = get_db()
     total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
-    cats  = conn.execute("SELECT category, COUNT(*) as c FROM memories GROUP BY category ORDER BY c DESC").fetchall()
+    cats = conn.execute(
+        "SELECT category, COUNT(*) as c FROM memories GROUP BY category ORDER BY c DESC"
+    ).fetchall()
     conn.close()
     size = server.DB_PATH.stat().st_size
     print(f"TOTAL MEMORIES : {total}")
-    print(f"DB SIZE        : {size:,} bytes  ({size//1024} KB)")
+    print(f"DB SIZE        : {size:,} bytes  ({size // 1024} KB)")
     print(f"DB PATH        : {server.DB_PATH}")
-    print(f"\nCATEGORIES:")
+    print("\nCATEGORIES:")
     for r in cats:
         print(f"  {r['category']:<20} {r['c']} memories")
 
@@ -174,7 +188,9 @@ def main():
 
     p_recall = sub.add_parser("recall", help="Recall top memories (session start)")
     p_recall.add_argument("--limit", "-l", type=int, default=3)
-    p_recall.add_argument("--min-importance", dest="min_importance", type=int, default=7)
+    p_recall.add_argument(
+        "--min-importance", dest="min_importance", type=int, default=7
+    )
 
     sub.add_parser("list", help="List all memories")
     sub.add_parser("stats", help="DB stats")

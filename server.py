@@ -4,12 +4,18 @@ ENGRAM MCP SERVER v4.2 — PONYTAIL EDITION (July 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
-import json, sys, sqlite3, hashlib, re
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import os
-DB_PATH = Path(os.environ.get("ENGRAM_DB_PATH", Path.home() / "engram-mcp" / "memory.db"))
+DB_PATH = Path(
+    os.environ.get("ENGRAM_DB_PATH", Path.home() / "engram-mcp" / "memory.db")
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS memories (
@@ -29,6 +35,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize
 _SCHEMA_INITIALIZED = False
 _LAST_DECAY_RUN = 0
 
+
 def get_db():
     global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -38,36 +45,51 @@ def get_db():
     conn.execute("PRAGMA synchronous=NORMAL;")
     if not _SCHEMA_INITIALIZED:
         conn.executescript(SCHEMA)
-        try: conn.execute("ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT ''")
-        except: pass
+        try:
+            conn.execute(
+                "ALTER TABLE memories ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT ''"
+            )
+        except:
+            pass
         _SCHEMA_INITIALIZED = True
-        
+
     # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
     import time
+
     if time.time() - _LAST_DECAY_RUN > 3600:
-        conn.execute("UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(created_at) > 30 AND julianday('now') - julianday(updated_at) >= 1", (now(),))
+        conn.execute(
+            "UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(created_at) > 30 AND julianday('now') - julianday(updated_at) >= 1",
+            (now(),),
+        )
         conn.commit()
         _LAST_DECAY_RUN = time.time()
     return conn
 
+
 def now():
     return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
+
 def make_id(content):
     return hashlib.sha1(f"{content}".encode()).hexdigest()[:12]
+
 
 def safe_int(val, default, lo=None, hi=None):
     try:
         v = int(val)
     except (ValueError, TypeError):
         v = default
-    if lo is not None: v = max(lo, v)
-    if hi is not None: v = min(hi, v)
+    if lo is not None:
+        v = max(lo, v)
+    if hi is not None:
+        v = min(hi, v)
     return v
+
 
 MAX_CONTENT = 8000
 
 # ── TOOL FUNCTIONS ──────────────────────────────────────────────────────────
+
 
 def t_auto_context(a):
     limit = safe_int(a.get("limit", 5), 5, 1, 8)
@@ -75,73 +97,97 @@ def t_auto_context(a):
     conn = get_db()
     rows = conn.execute(
         "SELECT id, category, content, importance FROM memories WHERE importance >= ? ORDER BY importance DESC, created_at DESC LIMIT ?",
-        (min_imp, limit)
+        (min_imp, limit),
     ).fetchall()
-    
+
     if rows:
-        ids = [r['id'] for r in rows]
+        ids = [r["id"] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(
+            f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})",
+            [now()] + ids,
+        )
         conn.commit()
-        
+
     conn.close()
 
     lines = [f"[{r['category']}] {r['content']}" for r in rows]
     cats = {}
     for r in rows:
-        cats[r['category']] = cats.get(r['category'], 0) + 1
+        cats[r["category"]] = cats.get(r["category"], 0) + 1
 
     return {"ctx": "\n".join(lines), "n": len(lines), "cats": cats}
+
 
 def t_smart_search(a):
     query = a.get("query", "").strip()
     limit = safe_int(a.get("limit", 5), 5, 1, 8)
-    if not query: return {"error": "query required"}
+    if not query:
+        return {"error": "query required"}
 
     conn = get_db()
-    query_clean = re.sub(r'[^\w\s]', ' ', query).strip()
-    
+    query_clean = re.sub(r"[^\w\s]", " ", query).strip()
+
     if not query_clean:
         # Fallback if query was entirely punctuation
         query_clean = query
 
     try:
         # FTS5 bm25 rank is negative (lower is better). We subtract importance * 0.5 to boost high-importance memories.
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
             ORDER BY (rank - (m.importance * 0.5)) 
             LIMIT ?
-        """, (query_clean, limit)).fetchall()
+        """,
+            (query_clean, limit),
+        ).fetchall()
     except Exception as e:
         sys.stderr.write(f"[FTS5 Error] {e} - Falling back to LIKE query.\n")
+        rows = []
+
+    if not rows:
         rows = conn.execute(
             "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? ORDER BY importance DESC LIMIT ?",
-            (f"%{query}%", limit)
+            (f"%{query}%", limit),
         ).fetchall()
-        
+
     if rows:
-        ids = [r['id'] for r in rows]
+        ids = [r["id"] for r in rows]
         placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})", [now()] + ids)
+        conn.execute(
+            f"UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id IN ({placeholders})",
+            [now()] + ids,
+        )
         conn.commit()
-        
+
     conn.close()
 
-    results = [{"id": r["id"], "category": r["category"], "content": r["content"], "importance": r["importance"]} for r in rows]
+    results = [
+        {
+            "id": r["id"],
+            "category": r["category"],
+            "content": r["content"],
+            "importance": r["importance"],
+        }
+        for r in rows
+    ]
     return {"results": results, "n": len(results)}
 
+
 def t_save(a):
-    content = a.get("content", "").strip()
-    if not content: return {"error": "content required"}
+    content = str(a.get("content", "") or "").strip()
+    if not content:
+        return {"error": "content required"}
     content = content[:MAX_CONTENT]
-    cat = a.get("category", "general")
-    tags = a.get("tags", "")
+    cat = str(a.get("category", "") or "general")
+    tags = str(a.get("tags", "") or "")
     imp = safe_int(a.get("importance", 5), 5, 1, 10)
-    
+
     # Use provided ID to allow editing, otherwise hash the content
-    provided_id = a.get("id", "").strip()
+    provided_id = str(a.get("id", "") or "").strip()
     mid = provided_id if provided_id else make_id(content)
 
     conn = get_db()
@@ -149,8 +195,8 @@ def t_save(a):
         """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
            VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
-           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
-        (mid, cat, content, tags, imp, now(), now(), now())
+           category=excluded.category, content=excluded.content, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
+        (mid, cat, content, tags, imp, now(), now(), now()),
     )
     conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
     conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
@@ -158,22 +204,24 @@ def t_save(a):
     conn.close()
     return {"id": mid, "status": "saved", "cat": cat, "imp": imp}
 
+
 def t_save_block(a):
-    text = a.get("text", "").strip()
-    cat = a.get("category", "general")
-    if not text: return {"error": "text required"}
+    text = str(a.get("text", "") or "").strip()
+    cat = str(a.get("category", "") or "general")
+    if not text:
+        return {"error": "text required"}
     imp = safe_int(a.get("base_importance", 6), 6, 1, 10)
 
     content = text[:MAX_CONTENT]
     mid = make_id(content)
-    
+
     conn = get_db()
     conn.execute(
         """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
            VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
            category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
-        (mid, cat, content, "", imp, now(), now(), now())
+        (mid, cat, content, "", imp, now(), now(), now()),
     )
     conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
     conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
@@ -181,9 +229,11 @@ def t_save_block(a):
     conn.close()
     return {"saved": [{"id": mid, "preview": text[:50]}], "saved_n": 1, "skipped": 0}
 
+
 def t_delete(a):
-    m = a.get("id", "").strip()
-    if not m: return {"error": "id required"}
+    m = str(a.get("id", "") or "").strip()
+    if not m:
+        return {"error": "id required"}
 
     conn = get_db()
     conn.execute("DELETE FROM memories WHERE id=?", (m,))
@@ -192,13 +242,25 @@ def t_delete(a):
     conn.close()
     return {"status": "deleted", "id": m}
 
+
 def t_stats(a):
     conn = get_db()
     total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
-    cats = {row['category']: row['c'] for row in conn.execute("SELECT category, COUNT(*) as c FROM memories GROUP BY category").fetchall()}
+    cats = {
+        row["category"]: row["c"]
+        for row in conn.execute(
+            "SELECT category, COUNT(*) as c FROM memories GROUP BY category"
+        ).fetchall()
+    }
     conn.close()
     size = DB_PATH.stat().st_size if DB_PATH.exists() else 0
-    return {"memories": total, "categories": len(cats), "db_bytes": size, "details": cats}
+    return {
+        "memories": total,
+        "categories": len(cats),
+        "db_bytes": size,
+        "details": cats,
+    }
+
 
 # ── REGISTRY ────────────────────────────────────────────────────────────────
 
@@ -206,79 +268,177 @@ TOOLS = {
     "memory_auto_context": {
         "fn": t_auto_context,
         "description": "Session boot: returns top memories + category map. Call ONCE at session start. Hard cap 8 results.",
-        "inputSchema": {"type":"object","properties":{
-            "limit":{"type":"integer","description":"Max results 1-8, default 5"},
-            "min_importance":{"type":"integer","description":"Min importance 1-10, default 7"}}}
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Max results 1-8, default 5",
+                },
+                "min_importance": {
+                    "type": "integer",
+                    "description": "Min importance 1-10, default 7",
+                },
+            },
+        },
     },
     "memory_smart_search": {
         "fn": t_smart_search,
         "description": "Search memory using FTS5. Crucial: Do NOT pass raw conversational questions. Instead, act as a query expansion engine: extract core entities and generate synonyms. For example, instead of 'What did I eat?', pass 'eat food lunch dinner meal restaurant'. Instead of 'Who is my friend?', pass 'friend person meet know'. Returns up to 5 matching memories sorted by relevance rank.",
-        "inputSchema": {"type":"object","properties":{
-            "query":{"type":"string","description":"Search query"},
-            "limit":{"type":"integer","description":"Max 1-8, default 5"}},
-            "required":["query"]}
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+                "limit": {"type": "integer", "description": "Max 1-8, default 5"},
+            },
+            "required": ["query"],
+        },
     },
     "memory_save": {
         "fn": t_save,
         "description": "Save one memory with category, tags, importance (1-10). Auto-deduplication. Max 8000 chars.",
-        "inputSchema": {"type":"object","properties":{
-            "id":{"type":"string","description":"Optional ID of an existing memory to edit it in place"},
-            "content":{"type":"string"},
-            "category":{"type":"string","description":"project|preference|workflow|decision|fact|person|general"},
-            "tags":{"type":"string"},
-            "importance":{"type":"integer"}},
-            "required":["content"]}
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Optional ID of an existing memory to edit it in place",
+                },
+                "content": {"type": "string"},
+                "category": {
+                    "type": "string",
+                    "description": "project|preference|workflow|decision|fact|person|general",
+                },
+                "tags": {"type": "string"},
+                "importance": {"type": "integer"},
+            },
+            "required": ["content"],
+        },
     },
     "memory_save_block": {
         "fn": t_save_block,
         "description": "Save a large block of text as a single memory. Note: Does not perform LLM extraction. Max 8000 chars.",
-        "inputSchema": {"type":"object","properties":{
-            "text":{"type":"string","description":"Text to save as a block"},
-            "category":{"type":"string"},
-            "base_importance":{"type":"integer","description":"Base importance 1-10, default 6"}},
-            "required":["text"]}
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Text to save as a block"},
+                "category": {"type": "string"},
+                "base_importance": {
+                    "type": "integer",
+                    "description": "Base importance 1-10, default 6",
+                },
+            },
+            "required": ["text"],
+        },
     },
     "memory_delete": {
         "fn": t_delete,
         "description": "Delete memory by id. Also removes from FTS index.",
-        "inputSchema": {"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}
+        "inputSchema": {
+            "type": "object",
+            "properties": {"id": {"type": "string"}},
+            "required": ["id"],
+        },
     },
     "memory_stats": {
         "fn": t_stats,
         "description": "DB stats: memory count, categories, size. No content returned.",
-        "inputSchema": {"type":"object","properties":{}}
-    }
+        "inputSchema": {"type": "object", "properties": {}},
+    },
 }
 
 # ── JSON-RPC 2.0 STDIO ──────────────────────────────────────────────────────
 
-def send(o): sys.stdout.write(json.dumps(o)+"\n"); sys.stdout.flush()
+
+def send(o):
+    sys.stdout.write(json.dumps(o) + "\n")
+    sys.stdout.flush()
+
 
 def handle(msg):
-    method=msg.get("method",""); mid_=msg.get("id")
-    if method=="initialize":
-        send({"jsonrpc":"2.0","id":mid_,"result":{
-            "protocolVersion":"2024-11-05","capabilities":{"tools":{}},
-            "serverInfo":{"name":"engram-mcp","version":"4.2.0"}}})
-    elif method=="tools/list":
-        send({"jsonrpc":"2.0","id":mid_,"result":{"tools":[
-            {"name":n,"description":m["description"],"inputSchema":m["inputSchema"]}
-            for n,m in TOOLS.items()]}})
-    elif method=="tools/call":
-        p=msg.get("params",{}); tn=p.get("name",""); ta=p.get("arguments",{})
+    method = msg.get("method", "")
+    mid_ = msg.get("id")
+    if method == "initialize":
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": mid_,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "engram-mcp", "version": "4.2.0"},
+                },
+            }
+        )
+    elif method == "tools/list":
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": mid_,
+                "result": {
+                    "tools": [
+                        {
+                            "name": n,
+                            "description": m["description"],
+                            "inputSchema": m["inputSchema"],
+                        }
+                        for n, m in TOOLS.items()
+                    ]
+                },
+            }
+        )
+    elif method == "tools/call":
+        p = msg.get("params", {})
+        tn = p.get("name", "")
+        ta = p.get("arguments", {})
+        if ta is None:
+            ta = {}
         if tn not in TOOLS:
-            send({"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown: {tn}"}}); return
+            send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": mid_,
+                    "error": {"code": -32601, "message": f"Unknown: {tn}"},
+                }
+            )
+            return
         try:
-            r=TOOLS[tn]["fn"](ta)
-            send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":json.dumps(r,indent=2)}],"isError":False}})
+            r = TOOLS[tn]["fn"](ta)
+            send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": mid_,
+                    "result": {
+                        "content": [{"type": "text", "text": json.dumps(r, indent=2)}],
+                        "isError": False,
+                    },
+                }
+            )
         except Exception as e:
-            send({"jsonrpc":"2.0","id":mid_,"result":{"content":[{"type":"text","text":f"ERR:{e}"}],"isError":True}})
-    elif method in ("notifications/initialized","notifications/cancelled"): return None
+            send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": mid_,
+                    "result": {
+                        "content": [{"type": "text", "text": f"ERR:{e}"}],
+                        "isError": True,
+                    },
+                }
+            )
+    elif method in ("notifications/initialized", "notifications/cancelled"):
+        return None
+    elif method == "ping":
+        send({"jsonrpc": "2.0", "id": mid_, "result": {}})
     elif mid_ is not None:
-        return {"jsonrpc":"2.0","id":mid_,"error":{"code":-32601,"message":f"Unknown method:{method}"}}
+        return {
+            "jsonrpc": "2.0",
+            "id": mid_,
+            "error": {"code": -32601, "message": f"Unknown method:{method}"},
+        }
+
 
 def main():
-    sys.stderr.write(f"[engram-mcp v4.2] Booting...\n")
+    sys.stderr.write("[engram-mcp v4.2] Booting...\n")
     if len(sys.argv) > 1:
         if sys.argv[1] == "--diagnostics":
             try:
@@ -295,13 +455,18 @@ def main():
             print("Usage: python3 server.py [--diagnostics]")
             sys.exit(0)
     get_db()
-    
+
     for line in sys.stdin:
         try:
             req = json.loads(line)
             if "method" in req:
                 res = handle(req)
-                if res: sys.stdout.write(json.dumps(res) + "\n"); sys.stdout.flush()
-        except Exception as e: sys.stderr.write(f"[engram-mcp] {e}\n")
+                if res:
+                    sys.stdout.write(json.dumps(res) + "\n")
+                    sys.stdout.flush()
+        except Exception as e:
+            sys.stderr.write(f"[engram-mcp] {e}\n")
 
-if __name__=="__main__": main()
+
+if __name__ == "__main__":
+    main()

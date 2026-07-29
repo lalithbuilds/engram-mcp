@@ -1,9 +1,16 @@
 import json
 import time
 
+
 def create_cast(filename):
     lines = [
-        {"version": 2, "width": 90, "height": 24, "timestamp": int(time.time()), "env": {"TERM": "xterm-256color", "SHELL": "/bin/zsh"}},
+        {
+            "version": 2,
+            "width": 90,
+            "height": 24,
+            "timestamp": int(time.time()),
+            "env": {"TERM": "xterm-256color", "SHELL": "/bin/zsh"},
+        },
         [0.1, "o", "\x1b[1;32m➜\x1b[0m \x1b[1;36m~\x1b[0m "],
         [0.5, "o", "e"],
         [0.6, "o", "n"],
@@ -17,7 +24,7 @@ def create_cast(filename):
         [1.4, "o", "v"],
         [1.5, "o", "e"],
         [1.6, "o", " "],
-        [1.7, "o", "\""],
+        [1.7, "o", '"'],
         [1.8, "o", "C"],
         [1.9, "o", "l"],
         [2.0, "o", "a"],
@@ -44,7 +51,7 @@ def create_cast(filename):
         [4.1, "o", "C"],
         [4.2, "o", "S"],
         [4.3, "o", "S"],
-        [4.4, "o", "\""],
+        [4.4, "o", '"'],
         [4.5, "o", " "],
         [4.6, "o", "-"],
         [4.7, "o", "c"],
@@ -79,7 +86,11 @@ def create_cast(filename):
         [8.5, "o", "n"],
         [8.6, "o", "d"],
         [8.7, "o", "\r\n"],
-        [9.0, "o", "\r\n\x1b[1;33m[9a7b8c2d1e3f]\x1b[0m \x1b[1;34m[pref]\x1b[0m importance=5\r\n"],
+        [
+            9.0,
+            "o",
+            "\r\n\x1b[1;33m[9a7b8c2d1e3f]\x1b[0m \x1b[1;34m[pref]\x1b[0m importance=5\r\n",
+        ],
         [9.1, "o", "  Claude prefers TailwindCSS\r\n"],
         [9.2, "o", "  tags: \x1b[90m  created: 2026-07-27\x1b[0m\r\n\r\n"],
         [9.5, "o", "\x1b[1;32m➜\x1b[0m \x1b[1;36m~\x1b[0m "],
@@ -96,14 +107,18 @@ def create_cast(filename):
         [11.5, "o", "t"],
         [11.6, "o", "s"],
         [11.7, "o", "\r\n"],
-        [12.0, "o", "TOTAL MEMORIES : 1\r\nDB SIZE        : 12,288 bytes  (12 KB)\r\nDB PATH        : /Users/user/engram-mcp/memory.db\r\n\r\nCATEGORIES:\r\n  pref                 1 memories\r\n"],
+        [
+            12.0,
+            "o",
+            "TOTAL MEMORIES : 1\r\nDB SIZE        : 12,288 bytes  (12 KB)\r\nDB PATH        : /Users/user/engram-mcp/memory.db\r\n\r\nCATEGORIES:\r\n  pref                 1 memories\r\n",
+        ],
         [12.5, "o", "\x1b[1;32m➜\x1b[0m \x1b[1;36m~\x1b[0m "],
-        [15.0, "o", ""]
+        [15.0, "o", ""],
     ]
-    with open(filename, 'w') as f:
-        f.write(json.dumps(lines[0]) + '\n')
-        for line in lines[1:]:
-            f.write(json.dumps(line) + '\n')
+    with open(filename, "w") as f:
+        f.write(json.dumps(lines[0]) + "\n")
+        f.writelines(json.dumps(line) + "\n" for line in lines[1:])
 
-create_cast('demo.cast')
+
+create_cast("demo.cast")
 print("Generated demo.cast")
