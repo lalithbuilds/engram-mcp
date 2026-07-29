@@ -108,6 +108,36 @@ class TestEngramMCP(unittest.TestCase):
         self.assertIn("High importance", ctx["ctx"])
 
 
+    
+    def test_save_with_provided_id(self):
+        # Save initially
+        result1 = server.t_save({
+            "category": "test",
+            "content": "Initial content",
+            "importance": 5
+        })
+        mem_id = result1["id"]
+        
+        # Update with provided ID
+        result2 = server.t_save({
+            "id": mem_id,
+            "category": "test2",
+            "content": "Updated content",
+            "importance": 9
+        })
+        
+        self.assertEqual(result1["id"], result2["id"])
+        
+        # Verify DB update
+        row = self.conn.execute("SELECT category, content, importance FROM memories WHERE id=?", (mem_id,)).fetchone()
+        self.assertEqual(row["content"], "Updated content")
+        self.assertEqual(row["category"], "test2")
+        self.assertEqual(row["importance"], 9)
+        
+        # Verify FTS update
+        fts_row = self.conn.execute("SELECT content FROM memories_fts WHERE id=?", (mem_id,)).fetchone()
+        self.assertEqual(fts_row["content"], "Updated content")
+
     def test_save_block(self):
         server.t_save_block({"text": "This is a large block of text", "category": "general", "base_importance": 6})
         results = server.t_smart_search({"query": "large block"})
