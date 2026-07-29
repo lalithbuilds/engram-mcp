@@ -108,5 +108,31 @@ class TestEngramMCP(unittest.TestCase):
         self.assertIn("High importance", ctx["ctx"])
 
 
+    def test_save_block(self):
+        server.t_save_block({"text": "This is a large block of text", "category": "general", "base_importance": 6})
+        results = server.t_smart_search({"query": "large block"})
+        self.assertEqual(len(results["results"]), 1)
+        self.assertIn("large block", results["results"][0]["content"])
+        self.assertEqual(results["results"][0]["category"], "general")
+
+    def test_delete(self):
+        saved = server.t_save({"category": "general", "content": "To be deleted", "importance": 5})
+        mem_id = saved["id"]
+        server.t_delete({"id": mem_id})
+        count = self.conn.execute("SELECT COUNT(*) FROM memories WHERE id=?", (mem_id,)).fetchone()[0]
+        self.assertEqual(count, 0)
+        fts_count = self.conn.execute("SELECT COUNT(*) FROM memories_fts WHERE id=?", (mem_id,)).fetchone()[0]
+        self.assertEqual(fts_count, 0)
+
+    def test_stats(self):
+        server.t_save({"category": "general", "content": "Stats item 1", "importance": 5})
+        server.t_save({"category": "project", "content": "Stats item 2", "importance": 8})
+        stats = server.t_stats({})
+        self.assertEqual(stats["memories"], 2)
+        self.assertEqual(stats["categories"], 2)
+        self.assertEqual(stats["details"]["general"], 1)
+        self.assertEqual(stats["details"]["project"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
