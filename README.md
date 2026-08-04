@@ -150,7 +150,42 @@ python3 engram.py stats
 ## 🤝 Contributing
 
 We welcome contributions! Specifically, we are looking for help adding a `--json` export flag to the CLI. 
-Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](https://github.com/lalithbuilds/engram-mcp/blob/main/CONTRIBUTING.md) for guidelines.
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"DB not found at ~/.engram-mcp/memory.db. Run the MCP server first."**
+- The SQLite database is created when the MCP server starts for the first time.
+- Make sure you're running `server.py` before using the CLI.
+- Check that the MCP server configuration points to the correct path.
+
+**"database is locked" errors**
+- This happens when multiple processes try to write to the database simultaneously.
+- Engram uses WAL mode which handles most concurrency, but if you see this:
+  - Wait a moment and try again (the lock is usually temporary).
+  - Check if another `engram` process is running.
+  - Restart the MCP server if the issue persists.
+
+**MCP client fails to parse stdio output**
+- The MCP server communicates via JSON-RPC over stdio.
+- Ensure you're using Python 3.8+ (`python3 --version`).
+- Check that the `server.py` path is correct in your MCP config.
+- Try running `python3 server.py` directly to see if there are any Python errors.
+
+**"Warning: fragment with name X already exists"**
+- This is a warning about duplicate memory IDs, not an error.
+- It typically means the same content was saved multiple times.
+- Use `engram list` and `engram delete <id>` to remove duplicates.
+
+### Getting Help
+
+- Check the [GitHub Issues](https://github.com/lalithbuilds/engram-mcp/issues) for known problems.
+- Open a new issue with:
+  - Your Python version (`python3 --version`)
+  - The exact error message
+  - Steps to reproduce
 
 ## 📄 License
 
