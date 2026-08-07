@@ -139,7 +139,7 @@ def t_smart_search(a):
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank - (m.importance * 0.5)) 
+            ORDER BY (bm25(memories_fts, 0, 10) - (m.importance * 0.5)) 
             LIMIT ?
         """,
             (query_clean, limit),
