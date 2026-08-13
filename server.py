@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ENGRAM MCP SERVER v4.2 — PONYTAIL EDITION (July 2026)
+ENGRAM MCP SERVER v4.3 — PONYTAIL EDITION (Aug 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
@@ -10,6 +10,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -54,8 +55,6 @@ def get_db():
         _SCHEMA_INITIALIZED = True
 
     # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
-    import time
-
     if time.time() - _LAST_DECAY_RUN > 3600:
         conn.execute(
             "UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(created_at) > 30 AND julianday('now') - julianday(updated_at) >= 1",
@@ -91,13 +90,18 @@ MAX_CONTENT = 8000
 # ── TOOL FUNCTIONS ──────────────────────────────────────────────────────────
 
 
+# Categories excluded from auto-context boot (noise/bulk-import data)
+_NOISE_CATS = ("stress_test", "obsidian_import")
+
+
 def t_auto_context(a):
     limit = safe_int(a.get("limit", 5), 5, 1, 8)
     min_imp = safe_int(a.get("min_importance", 7), 7, 1, 10)
     conn = get_db()
+    placeholders = ",".join(["?"] * len(_NOISE_CATS))
     rows = conn.execute(
-        "SELECT id, category, content, importance FROM memories WHERE importance >= ? ORDER BY importance DESC, created_at DESC LIMIT ?",
-        (min_imp, limit),
+        f"SELECT id, category, content, importance FROM memories WHERE importance >= ? AND category NOT IN ({placeholders}) ORDER BY importance DESC, created_at DESC LIMIT ?",
+        (min_imp, *_NOISE_CATS, limit),
     ).fetchall()
 
     if rows:
@@ -220,7 +224,7 @@ def t_save_block(a):
         """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
            VALUES(?,?,?,?,?,?,?,0,?) 
            ON CONFLICT(id) DO UPDATE SET 
-           category=excluded.category, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
+           category=excluded.category, content=excluded.content, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, "", imp, now(), now(), now()),
     )
     conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
