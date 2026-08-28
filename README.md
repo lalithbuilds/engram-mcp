@@ -51,18 +51,20 @@ Engram is for developers who want **100% local, zero-dependency, zero-bloat** ag
 ## 🚀 Core Capabilities & Features
 
 1.  **🐍 Zero Dependencies**
-    Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`). No `pip install` required.
+    Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`, `curses`). No `pip install` required.
 2.  **⏳ Intelligent Auto-Decay (Forgetting Mechanism)**
     Unlike other servers that hoard data forever, Engram prevents stale context poisoning by employing a background auto-decay algorithm:
     *   Whenever an agent searches or retrieves a memory, it automatically bumps the `access_count` to signal importance.
     *   Whenever the MCP server spins up, it runs a background decay query: any memory that hasn't been accessed in 30 days automatically loses 1 point of `importance`.
     Your agent's context window stays clean, relevant, and self-maintaining without manual intervention.
-3.  **🛡️ Enterprise-Grade Concurrency (WAL Mode)**
-    Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes.
+3.  **🛡️ Enterprise-Grade Concurrency & Backups**
+    Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes. The system also performs daily automatic native SQLite backups (`memory.db.bak`) to protect against payload corruption.
 4.  **🔒 Payload Bounding & Resilience**
     Engram strictly clamps memory outputs (max 8 results) to prevent LLM context-window blowouts, and truncates incoming memories to 8,000 characters to prevent payload bloat.
-5.  **⌨️ Standalone CLI Manager**
-    Comes with a built-in terminal tool (`engram.py`) so human developers can manually view, edit, search, or delete the agent's memories at any time.
+5.  **🧠 Conflict Surfacing (Self-Healing)**
+    Built-in heuristic checks warn AI agents during memory saving if they are attempting to store contradicting contexts (e.g. "We use Postgres" vs "We use Mongo").
+6.  **⌨️ Advanced CLI & Terminal UI (TUI)**
+    Comes with a built-in terminal tool (`engram.py`) and a full-screen interactive `tui` dashboard. Human developers can manually view, edit, export, import, or search the agent's memories at any time, with deterministic `--json` outputs available for machine parsing.
 
 ---
 
@@ -132,24 +134,31 @@ You are always in control of what the agent remembers. You can use the bundled `
 # Save a new memory for the agent manually
 python3 engram.py save "We use Tailwind CSS for all styling, never raw CSS." --category frontend --importance 10
 
-# Search what the agent knows about a topic
-python3 engram.py search "Tailwind"
+# Search what the agent knows about a topic (can also output as JSON)
+python3 engram.py --json search "Tailwind"
 
 # List all memories in the database
 python3 engram.py list
+
+# Open the interactive Terminal UI Dashboard
+python3 engram.py tui
 
 # Delete a specific memory by its ID
 python3 engram.py delete abc123def456
 
 # View database size and category breakdown
 python3 engram.py stats
+
+# Export memories to a JSON file (or import them) for Git sync
+python3 engram.py export backup.json
+python3 engram.py import backup.json
 ```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Specifically, we are looking for help adding a `--json` export flag to the CLI. 
+We welcome contributions! Specifically, we are looking for help improving the terminal UI (TUI) and making FTS5 search even smarter.
 Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
