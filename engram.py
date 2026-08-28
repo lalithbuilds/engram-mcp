@@ -53,6 +53,9 @@ def cmd_save(args):
     print(f"SAVED  id={mid}  cat={category}  importance={importance}")
 
 
+import json
+
+
 def cmd_search(args):
     query = " ".join(args.query)
     limit = args.limit or 5
@@ -68,7 +71,7 @@ def cmd_search(args):
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank - (m.importance * 0.5)) 
+            ORDER BY (rank * m.importance)
             LIMIT ?
         """,
             (query_clean, limit),
@@ -93,6 +96,11 @@ def cmd_search(args):
         conn.commit()
 
     conn.close()
+    if args.json:
+        results = [dict(r) for r in rows]
+        print(json.dumps(results, indent=2))
+        return
+
     if not rows:
         print("No results.")
         return
@@ -121,6 +129,11 @@ def cmd_recall(args):
         conn.commit()
 
     conn.close()
+    if args.json:
+        results = [dict(r) for r in rows]
+        print(json.dumps(results, indent=2))
+        return
+
     if not rows:
         print("No high-importance memories.")
         return
@@ -135,6 +148,12 @@ def cmd_list(args):
         "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC,created_at DESC LIMIT 50"
     ).fetchall()
     conn.close()
+
+    if args.json:
+        results = [dict(r) for r in rows]
+        print(json.dumps(results, indent=2))
+        return
+
     if not rows:
         print("Memory bank is empty.")
         return
@@ -155,6 +174,17 @@ def cmd_stats(args):
     ).fetchall()
     conn.close()
     size = server.DB_PATH.stat().st_size
+
+    if args.json:
+        stats = {
+            "total_memories": total,
+            "db_size_bytes": size,
+            "db_path": str(server.DB_PATH),
+            "categories": {r["category"]: r["c"] for r in cats}
+        }
+        print(json.dumps(stats, indent=2))
+        return
+
     print(f"TOTAL MEMORIES : {total}")
     print(f"DB SIZE        : {size:,} bytes  ({size // 1024} KB)")
     print(f"DB PATH        : {server.DB_PATH}")
@@ -174,6 +204,7 @@ def cmd_delete(args):
 
 def main():
     parser = argparse.ArgumentParser(description="engram — Engram local memory CLI")
+    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
     sub = parser.add_subparsers(dest="cmd")
 
     p_save = sub.add_parser("save", help="Save a memory")

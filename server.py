@@ -137,13 +137,13 @@ def t_smart_search(a):
         query_clean = query
 
     try:
-        # FTS5 bm25 rank is negative (lower is better). We subtract importance * 0.5 to boost high-importance memories.
+        # FTS5 bm25 rank is negative (lower is better). We multiply by importance to boost high-importance memories.
         rows = conn.execute(
             """
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank - (m.importance * 0.5)) 
+            ORDER BY (rank * m.importance)
             LIMIT ?
         """,
             (query_clean, limit),

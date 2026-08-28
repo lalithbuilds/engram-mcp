@@ -1,12 +1,16 @@
+import io
+import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 # Set the DB path to a temporary file before importing server
 temp_dir = tempfile.TemporaryDirectory()
 os.environ["ENGRAM_DB_PATH"] = str(Path(temp_dir.name) / "test_memory.db")
 
+import engram
 import server
 
 
@@ -163,6 +167,64 @@ class TestEngramMCP(unittest.TestCase):
         self.assertEqual(stats["details"]["general"], 1)
         self.assertEqual(stats["details"]["project"], 1)
 
+
+class TestEngramCLI(unittest.TestCase):
+    def setUp(self):
+        self.conn = server.get_db()
+        self.conn.execute("DELETE FROM memories")
+        self.conn.execute("DELETE FROM memories_fts")
+        self.conn.commit()
+
+    def tearDown(self):
+        self.conn.close()
+
+    def test_json_output_stats(self):
+        server.t_save({"category": "general", "content": "hello world", "importance": 5})
+        args = type("Args", (), {"json": True})()
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            engram.cmd_stats(args)
+            output = mock_stdout.getvalue()
+
+        data = json.loads(output)
+        self.assertEqual(data["total_memories"], 1)
+        self.assertEqual(data["categories"]["general"], 1)
+
+    def test_json_output_search(self):
+        server.t_save({"category": "general", "content": "hello world", "importance": 5})
+        args = type("Args", (), {"json": True, "query": ["hello"], "limit": 5})()
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            engram.cmd_search(args)
+            output = mock_stdout.getvalue()
+
+        data = json.loads(output)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["content"], "hello world")
+
+    def test_json_output_list(self):
+        server.t_save({"category": "general", "content": "hello world", "importance": 5})
+        args = type("Args", (), {"json": True})()
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            engram.cmd_list(args)
+            output = mock_stdout.getvalue()
+
+        data = json.loads(output)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["content"], "hello world")
+
+    def test_json_output_recall(self):
+        server.t_save({"category": "general", "content": "hello world", "importance": 8})
+        args = type("Args", (), {"json": True, "limit": 3, "min_importance": 7})()
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            engram.cmd_recall(args)
+            output = mock_stdout.getvalue()
+
+        data = json.loads(output)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["content"], "hello world")
 
 if __name__ == "__main__":
     unittest.main()
