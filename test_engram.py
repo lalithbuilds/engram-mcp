@@ -226,5 +226,50 @@ class TestEngramCLI(unittest.TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["content"], "hello world")
 
+    def test_conflict_warning_on_save(self):
+        # Save first memory
+        res1 = server.t_save({
+            "category": "architecture",
+            "content": "We use PostgreSQL for all database storage. No NoSQL.",
+            "importance": 9
+        })
+        self.assertNotIn("warnings", res1)
+
+        # Save conflicting memory
+        res2 = server.t_save({
+            "category": "architecture",
+            "content": "We use MongoDB for all database storage. No SQL.",
+            "importance": 9
+        })
+        self.assertIn("warnings", res2)
+        self.assertIn("Similar memory found", res2["warnings"][0])
+
+    def test_cli_export_import(self):
+        # Save a couple of memories
+        server.t_save({"content": "Export memory 1", "category": "exp"})
+        server.t_save({"content": "Export memory 2", "category": "exp"})
+
+        export_file = Path(temp_dir.name) / "export.json"
+        args_export = type("Args", (), {"file": str(export_file), "json": False})()
+        engram.cmd_export(args_export)
+
+        self.assertTrue(export_file.exists())
+        with open(export_file) as f:
+            data = json.load(f)
+        self.assertGreaterEqual(len(data), 2)
+
+        # Clear db
+        self.conn.execute("DELETE FROM memories")
+        self.conn.execute("DELETE FROM memories_fts")
+        self.conn.commit()
+
+        # Import
+        args_import = type("Args", (), {"file": str(export_file), "json": False})()
+        engram.cmd_import(args_import)
+
+        # Verify
+        count = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+        self.assertGreaterEqual(count, 2)
+
 if __name__ == "__main__":
     unittest.main()

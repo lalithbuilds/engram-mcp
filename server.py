@@ -54,7 +54,7 @@ def get_db():
             pass
         _SCHEMA_INITIALIZED = True
 
-    # Auto-decay: throttle to 1 hour to prevent ingestion slowdowns, update 'updated_at' to prevent over-decay
+    # Auto-decay and Backup: throttle to 1 hour
     if time.time() - _LAST_DECAY_RUN > 3600:
         conn.execute(
             "UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(created_at) > 30 AND julianday('now') - julianday(updated_at) >= 1",
@@ -62,6 +62,25 @@ def get_db():
         )
         conn.commit()
         _LAST_DECAY_RUN = time.time()
+
+        # Auto-backup daily
+        backup_path = DB_PATH.with_suffix('.db.bak')
+        should_backup = True
+        if backup_path.exists():
+            last_backup_time = backup_path.stat().st_mtime
+            if time.time() - last_backup_time < 86400: # 24 hours
+                should_backup = False
+
+        if should_backup and DB_PATH.exists():
+            try:
+                backup_conn = sqlite3.connect(str(backup_path))
+                conn.backup(backup_conn)
+                backup_conn.close()
+                # Update mtime on the backup to track correctly
+                backup_path.touch()
+            except Exception as e:
+                sys.stderr.write(f"[engram-backup] Backup failed: {e}\n")
+
     return conn
 
 
@@ -194,7 +213,32 @@ def t_save(a):
     provided_id = str(a.get("id", "") or "").strip()
     mid = provided_id if provided_id else make_id(content)
 
+    warnings = []
     conn = get_db()
+
+    # Conflict surfacing: if saving a new memory, check for potentially conflicting items
+    if not provided_id:
+        query_clean = re.sub(r"[^\w\s]", " ", content).strip()
+        words = [w for w in query_clean.split() if len(w) > 3]
+        if words:
+            # Query top 3 matching memories based on the text
+            query_str = " OR ".join(words[:10])
+            try:
+                candidates = conn.execute(
+                    """
+                    SELECT m.id, m.content
+                    FROM memories_fts f JOIN memories m ON f.id=m.id
+                    WHERE memories_fts MATCH ?
+                    LIMIT 3
+                    """,
+                    (query_str,)
+                ).fetchall()
+                for c in candidates:
+                    if c["id"] != mid:
+                        warnings.append(f"Similar memory found (ID {c['id']}): {c['content'][:50]}... Did you mean to update it?")
+            except Exception as e:
+                sys.stderr.write(f"[engram-conflict] Warning FTS5 error: {e}\n")
+
     conn.execute(
         """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
            VALUES(?,?,?,?,?,?,?,0,?) 
@@ -206,7 +250,11 @@ def t_save(a):
     conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
-    return {"id": mid, "status": "saved", "cat": cat, "imp": imp}
+
+    res = {"id": mid, "status": "saved", "cat": cat, "imp": imp}
+    if warnings:
+        res["warnings"] = warnings
+    return res
 
 
 def t_save_block(a):
