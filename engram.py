@@ -51,7 +51,8 @@ def cmd_save(args):
         
     if "error" in res:
         print(f"Error: {res['error']}")
-        return
+        import sys
+        sys.exit(1)
         
     if "warnings" in res and res["warnings"]:
         for w in res["warnings"]:
@@ -198,8 +199,13 @@ def cmd_stats(args):
 
 
 def cmd_delete(args):
+    import sys
     conn = get_db()
-    conn.execute("DELETE FROM memories WHERE id=?", (args.id,))
+    cursor = conn.execute("DELETE FROM memories WHERE id=?", (args.id,))
+    if cursor.rowcount == 0:
+        conn.close()
+        print(f"Error: memory {args.id} not found")
+        sys.exit(1)
     conn.execute("DELETE FROM memories_fts WHERE id=?", (args.id,))
     conn.commit()
     conn.close()
@@ -217,6 +223,8 @@ def cmd_export(args):
         print(f"Exported {len(data)} memories to {args.file}")
     except Exception as e:
         print(f"Failed to export: {e}")
+        import sys
+        sys.exit(1)
 
 
 def cmd_import(args):
@@ -225,11 +233,13 @@ def cmd_import(args):
             data = json.load(f)
     except Exception as e:
         print(f"Failed to load file: {e}")
-        return
+        import sys
+        sys.exit(1)
 
     if not isinstance(data, list):
         print("Invalid format: expected a JSON array of memories.")
-        return
+        import sys
+        sys.exit(1)
 
     
     conn = server.get_db()

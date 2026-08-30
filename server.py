@@ -287,7 +287,10 @@ def t_delete(a):
         return {"error": "id required"}
 
     conn = get_db()
-    conn.execute("DELETE FROM memories WHERE id=?", (m,))
+    cursor = conn.execute("DELETE FROM memories WHERE id=?", (m,))
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"error": "memory not found"}
     conn.execute("DELETE FROM memories_fts WHERE id=?", (m,))
     conn.commit()
     conn.close()
