@@ -417,7 +417,7 @@ def handle(msg):
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "engram-mcp", "version": "4.2.0"},
+                    "serverInfo": {"name": "engram-mcp", "version": "1.0.0"},
                 },
             }
         )
@@ -461,7 +461,7 @@ def handle(msg):
                     "id": mid_,
                     "result": {
                         "content": [{"type": "text", "text": json.dumps(r, indent=2)}],
-                        "isError": False,
+                        "isError": isinstance(r, dict) and "error" in r,
                     },
                 }
             )

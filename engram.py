@@ -262,6 +262,11 @@ def cmd_tui(args):
         print("curses module not available on this platform.")
         return
 
+    import sys
+    if not sys.stdout.isatty():
+        print("TUI requires a real terminal.")
+        return
+        
     def run_tui(stdscr):
         curses.curs_set(0)
         conn = server.get_db()
