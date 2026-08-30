@@ -71,7 +71,7 @@ def cmd_search(args):
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank * m.importance)
+            ORDER BY (rank * m.importance * (1.0 / (1.0 + (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at))))))
             LIMIT ?
         """,
             (query_clean, limit),
