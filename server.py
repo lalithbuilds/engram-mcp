@@ -442,9 +442,9 @@ def handle(msg):
             }
         )
     elif method == "tools/call":
-        p = msg.get("params", {})
+        p = msg.get("params") or {}
         tn = p.get("name", "")
-        ta = p.get("arguments", {})
+        ta = p.get("arguments") or {}
         if ta is None:
             ta = {}
         if tn not in TOOLS:
