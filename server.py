@@ -11,6 +11,7 @@ import os
 import re
 import sqlite3
 import sys
+from xml.sax.saxutils import escape, quoteattr
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,7 +47,11 @@ def get_db(read_only=False):
         conn.execute("SELECT EXP(1)")
     except sqlite3.OperationalError:
         try:
-            conn.create_function("EXP", 1, math.exp)
+            def _safe_exp(x):
+                if x is None: return None
+                try: return math.exp(float(x))
+                except Exception: return None
+            conn.create_function("EXP", 1, _safe_exp)
         except Exception:
             pass
     conn.row_factory = sqlite3.Row
@@ -144,7 +149,7 @@ def t_auto_context(a):
 
     conn.close()
 
-    lines = [f"<memory id=\"{r['id']}\" category=\"{r['category']}\">\n{str(r['content']).replace('</memory>', '')}\n</memory>" for r in rows]
+    lines = [f"<memory id={quoteattr(str(r['id']))} category={quoteattr(str(r['category']))}>\n{escape(str(r['content']))}\n</memory>" for r in rows]
     cats = {}
     for r in rows:
         cats[r["category"]] = cats.get(r["category"], 0) + 1
@@ -463,7 +468,7 @@ def handle(msg):
                 {
                     "jsonrpc": "2.0",
                     "id": mid_,
-                    "error": {"code": -32601, "message": f"Unknown: {tn}"},
+                    "error": {"code": -32602, "message": f"Unknown: {tn}"},
                 }
             )
             return
@@ -521,16 +526,33 @@ def main():
             sys.exit(0)
     get_db().close()
 
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', newline='\n')
+    if hasattr(sys.stdin, 'reconfigure'):
+        sys.stdin.reconfigure(encoding='utf-8', newline='\n', errors='replace')
+        
     for line in sys.stdin:
         try:
             req = json.loads(line)
-            if "method" in req:
-                res = handle(req)
-                if res:
-                    sys.stdout.write(json.dumps(res) + "\n")
-                    sys.stdout.flush()
+            if not isinstance(req, dict) or "method" not in req:
+                err_res = {"jsonrpc": "2.0", "id": req.get("id") if isinstance(req, dict) else None, "error": {"code": -32600, "message": "Invalid Request"}}
+                sys.stdout.write(json.dumps(err_res) + "\n")
+                sys.stdout.flush()
+                continue
+                
+            res = handle(req)
+            if res:
+                sys.stdout.write(json.dumps(res) + "\n")
+                sys.stdout.flush()
+        except json.JSONDecodeError:
+            err_res = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+            sys.stdout.write(json.dumps(err_res) + "\n")
+            sys.stdout.flush()
         except Exception as e:
             sys.stderr.write(f"[engram-mcp] {e}\n")
+            err_res = {"jsonrpc": "2.0", "id": None, "error": {"code": -32603, "message": "Internal error"}}
+            sys.stdout.write(json.dumps(err_res) + "\n")
+            sys.stdout.flush()
 
 
 if __name__ == "__main__":

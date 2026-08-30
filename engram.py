@@ -218,7 +218,7 @@ def cmd_export(args):
     conn.close()
     data = [dict(r) for r in rows]
     try:
-        with open(args.file, "w", encoding="utf-8") as f:
+        with open(args.file, "w", encoding="utf-8", newline="\n") as f:
             json.dump(data, f, indent=2)
         print(f"Exported {len(data)} memories to {args.file}")
     except Exception as e:
@@ -229,7 +229,7 @@ def cmd_export(args):
 
 def cmd_import(args):
     try:
-        with open(args.file, "r", encoding="utf-8") as f:
+        with open(args.file, "r", encoding="utf-8", newline="\n") as f:
             data = json.load(f)
     except Exception as e:
         print(f"Failed to load file: {e}")
