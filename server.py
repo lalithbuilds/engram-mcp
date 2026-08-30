@@ -37,7 +37,7 @@ _SCHEMA_INITIALIZED = False
 _LAST_DECAY_RUN = 0
 
 
-def get_db():
+def get_db(read_only=False):
     global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
@@ -56,7 +56,7 @@ def get_db():
         _SCHEMA_INITIALIZED = True
 
     # Auto-decay and Backup: throttle to 1 hour
-    if time.time() - _LAST_DECAY_RUN > 3600:
+    if not read_only and time.time() - _LAST_DECAY_RUN > 3600:
         conn.execute(
             "UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(COALESCE(NULLIF(last_accessed_at, ''), created_at)) > 30 AND julianday('now') - julianday(updated_at) >= 1",
             (now(),),
@@ -135,7 +135,7 @@ def t_auto_context(a):
 
     conn.close()
 
-    lines = [f"[{r['category']}] {r['content']}" for r in rows]
+    lines = [f"<memory id=\"{r['id']}\" category=\"{r['category']}\">\n{r['content']}\n</memory>" for r in rows]
     cats = {}
     for r in rows:
         cats[r["category"]] = cats.get(r["category"], 0) + 1

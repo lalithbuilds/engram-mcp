@@ -147,7 +147,7 @@ def cmd_recall(args):
 
 
 def cmd_list(args):
-    conn = get_db()
+    conn = server.get_db(read_only=True)
     rows = conn.execute(
         "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC,created_at DESC LIMIT 1000"
     ).fetchall()
@@ -171,7 +171,7 @@ def cmd_list(args):
 
 
 def cmd_stats(args):
-    conn = get_db()
+    conn = server.get_db(read_only=True)
     total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
     cats = conn.execute(
         "SELECT category, COUNT(*) as c FROM memories GROUP BY category ORDER BY c DESC"
@@ -207,7 +207,7 @@ def cmd_delete(args):
 
 
 def cmd_export(args):
-    conn = server.get_db()
+    conn = server.get_db(read_only=True)
     rows = conn.execute("SELECT * FROM memories").fetchall()
     conn.close()
     data = [dict(r) for r in rows]
