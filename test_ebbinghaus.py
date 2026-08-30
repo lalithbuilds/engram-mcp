@@ -14,7 +14,6 @@ class TestEbbinghaus(unittest.TestCase):
     def setUp(self):
         self.conn = server.get_db()
         self.conn.execute("DELETE FROM memories")
-        self.conn.execute("DELETE FROM memories_fts")
         self.conn.commit()
 
     def tearDown(self):
@@ -31,7 +30,6 @@ class TestEbbinghaus(unittest.TestCase):
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (mid_recent, "general", "Apple", "", 5, now.isoformat(), now.isoformat(), 0, now.isoformat())
         )
-        self.conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid_recent, "Apple"))
         
         # Old memory
         mid_old = server.make_id("Apple_old")
@@ -40,7 +38,6 @@ class TestEbbinghaus(unittest.TestCase):
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (mid_old, "general", "Apple", "", 5, thirty_days_ago.isoformat(), thirty_days_ago.isoformat(), 0, thirty_days_ago.isoformat())
         )
-        self.conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid_old, "Apple"))
         self.conn.commit()
 
         # Fallback in case search_memories was intended to be t_smart_search

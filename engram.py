@@ -206,7 +206,6 @@ def cmd_delete(args):
         conn.close()
         print(f"Error: memory {args.id} not found")
         sys.exit(1)
-    conn.execute("DELETE FROM memories_fts WHERE id=?", (args.id,))
     conn.commit()
     conn.close()
     print(f"DELETED {args.id}")
@@ -267,8 +266,6 @@ def cmd_import(args):
                    category=excluded.category, content=excluded.content, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at, access_count=excluded.access_count""",
                 (r["id"], r.get("category", "general"), content, r.get("tags", ""), imp, created, updated, r.get("access_count", 0), r.get("last_accessed_at", "")),
             )
-            conn.execute("DELETE FROM memories_fts WHERE id=?", (r["id"],))
-            conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (r["id"], content))
             imported += 1
         except KeyError as e:
             print(f"Skipping malformed memory (missing {e})")

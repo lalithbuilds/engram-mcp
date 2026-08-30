@@ -33,6 +33,17 @@ CREATE TABLE IF NOT EXISTS memories (
     last_accessed_at TEXT NOT NULL DEFAULT ''
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id, content, tokenize='porter unicode61');
+
+CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+  INSERT INTO memories_fts(id, content) VALUES (new.id, new.content);
+END;
+CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+  DELETE FROM memories_fts WHERE id=old.id;
+END;
+CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+  DELETE FROM memories_fts WHERE id=old.id;
+  INSERT INTO memories_fts(id, content) VALUES (new.id, new.content);
+END;
 """
 
 _SCHEMA_INITIALIZED = False
@@ -41,7 +52,7 @@ _LAST_DECAY_RUN = 0
 
 def get_db(read_only=False):
     global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DB_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
     try:
         conn.execute("SELECT EXP(1)")
@@ -56,7 +67,7 @@ def get_db(read_only=False):
             pass
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
-    os.chmod(DB_PATH, 0o600)
+    if not DB_PATH.is_symlink(): os.chmod(DB_PATH, 0o600)
     conn.execute("PRAGMA synchronous=NORMAL;")
     if not _SCHEMA_INITIALIZED:
         conn.executescript(SCHEMA)
@@ -92,7 +103,7 @@ def get_db(read_only=False):
                 backup_conn.close()
                 # Update mtime on the backup to track correctly
                 backup_path.touch()
-                os.chmod(backup_path, 0o600)
+                if not backup_path.is_symlink(): os.chmod(backup_path, 0o600)
             except Exception as e:
                 sys.stderr.write(f"[engram-backup] Backup failed: {e}\n")
 
@@ -259,8 +270,6 @@ def t_save(a):
            category=excluded.category, content=excluded.content, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, tags, imp, now(), now(), now()),
     )
-    conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
-    conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
 
@@ -288,8 +297,6 @@ def t_save_block(a):
            category=excluded.category, content=excluded.content, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
         (mid, cat, content, "", imp, now(), now(), now()),
     )
-    conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
-    conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
     conn.commit()
     conn.close()
     return {"saved": [{"id": mid, "preview": text[:50]}], "saved_n": 1, "skipped": 0}
@@ -305,7 +312,6 @@ def t_delete(a):
     if cursor.rowcount == 0:
         conn.close()
         return {"error": "memory not found"}
-    conn.execute("DELETE FROM memories_fts WHERE id=?", (m,))
     conn.commit()
     conn.close()
     return {"status": "deleted", "id": m}

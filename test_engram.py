@@ -19,7 +19,6 @@ class TestEngramMCP(unittest.TestCase):
         self.conn = server.get_db()
         # Ensure fresh state for each test
         self.conn.execute("DELETE FROM memories")
-        self.conn.execute("DELETE FROM memories_fts")
         self.conn.commit()
 
     def tearDown(self):
@@ -172,7 +171,6 @@ class TestEngramCLI(unittest.TestCase):
     def setUp(self):
         self.conn = server.get_db()
         self.conn.execute("DELETE FROM memories")
-        self.conn.execute("DELETE FROM memories_fts")
         self.conn.commit()
 
     def tearDown(self):
@@ -260,7 +258,6 @@ class TestEngramCLI(unittest.TestCase):
 
         # Clear db
         self.conn.execute("DELETE FROM memories")
-        self.conn.execute("DELETE FROM memories_fts")
         self.conn.commit()
 
         # Import
