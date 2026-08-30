@@ -21,7 +21,8 @@ Thanks for your interest in contributing! This project follows the **Ponytail Ph
 
 - Bug fixes
 - Performance improvements to SQLite queries
-- Better FTS5 search ranking
+- UI/UX improvements for the `tui` dashboard
+- Smarter heuristic conflict detection during memory saves
 - Documentation improvements
 - Test coverage
 

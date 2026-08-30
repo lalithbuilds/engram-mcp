@@ -53,6 +53,9 @@ def cmd_save(args):
     print(f"SAVED  id={mid}  cat={category}  importance={importance}")
 
 
+import json
+
+
 def cmd_search(args):
     query = " ".join(args.query)
     limit = args.limit or 5
@@ -68,7 +71,7 @@ def cmd_search(args):
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank - (m.importance * 0.5)) 
+            ORDER BY (rank * m.importance)
             LIMIT ?
         """,
             (query_clean, limit),
@@ -93,6 +96,11 @@ def cmd_search(args):
         conn.commit()
 
     conn.close()
+    if args.json:
+        results = [dict(r) for r in rows]
+        print(json.dumps(results, indent=2))
+        return
+
     if not rows:
         print("No results.")
         return
@@ -121,6 +129,11 @@ def cmd_recall(args):
         conn.commit()
 
     conn.close()
+    if args.json:
+        results = [dict(r) for r in rows]
+        print(json.dumps(results, indent=2))
+        return
+
     if not rows:
         print("No high-importance memories.")
         return
@@ -135,6 +148,12 @@ def cmd_list(args):
         "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC,created_at DESC LIMIT 50"
     ).fetchall()
     conn.close()
+
+    if args.json:
+        results = [dict(r) for r in rows]
+        print(json.dumps(results, indent=2))
+        return
+
     if not rows:
         print("Memory bank is empty.")
         return
@@ -155,6 +174,17 @@ def cmd_stats(args):
     ).fetchall()
     conn.close()
     size = server.DB_PATH.stat().st_size
+
+    if args.json:
+        stats = {
+            "total_memories": total,
+            "db_size_bytes": size,
+            "db_path": str(server.DB_PATH),
+            "categories": {r["category"]: r["c"] for r in cats}
+        }
+        print(json.dumps(stats, indent=2))
+        return
+
     print(f"TOTAL MEMORIES : {total}")
     print(f"DB SIZE        : {size:,} bytes  ({size // 1024} KB)")
     print(f"DB PATH        : {server.DB_PATH}")
@@ -172,8 +202,113 @@ def cmd_delete(args):
     print(f"DELETED {args.id}")
 
 
+def cmd_export(args):
+    conn = server.get_db()
+    rows = conn.execute("SELECT * FROM memories").fetchall()
+    conn.close()
+    data = [dict(r) for r in rows]
+    try:
+        with open(args.file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        print(f"Exported {len(data)} memories to {args.file}")
+    except Exception as e:
+        print(f"Failed to export: {e}")
+
+
+def cmd_import(args):
+    try:
+        with open(args.file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"Failed to load file: {e}")
+        return
+
+    if not isinstance(data, list):
+        print("Invalid format: expected a JSON array of memories.")
+        return
+
+    conn = server.get_db()
+    imported = 0
+    for r in data:
+        try:
+            conn.execute(
+                """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at)
+                   VALUES(?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                   category=excluded.category, content=excluded.content, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at, access_count=excluded.access_count""",
+                (r["id"], r.get("category", "general"), r["content"], r.get("tags", ""), r.get("importance", 5), r.get("created_at", server.now()), r.get("updated_at", server.now()), r.get("access_count", 0), r.get("last_accessed_at", "")),
+            )
+            conn.execute("DELETE FROM memories_fts WHERE id=?", (r["id"],))
+            conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (r["id"], r["content"]))
+            imported += 1
+        except KeyError as e:
+            print(f"Skipping malformed memory (missing {e})")
+        except Exception as e:
+            print(f"Error importing memory: {e}")
+
+    conn.commit()
+    conn.close()
+    print(f"Imported {imported} memories from {args.file}")
+
+
+def cmd_tui(args):
+    try:
+        import curses
+    except ImportError:
+        print("curses module not available on this platform.")
+        return
+
+    def run_tui(stdscr):
+        curses.curs_set(0)
+        conn = server.get_db()
+        rows = conn.execute(
+            "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC, created_at DESC"
+        ).fetchall()
+        conn.close()
+
+        if not rows:
+            stdscr.addstr(0, 0, "Memory bank is empty. Press any key to exit.")
+            stdscr.getch()
+            return
+
+        current_row = 0
+        while True:
+            stdscr.clear()
+            h, w = stdscr.getmaxyx()
+            stdscr.addstr(0, 0, f"Engram TUI - {len(rows)} Memories - (UP/DOWN to scroll, 'q' to quit)", curses.A_REVERSE)
+
+            max_items = h - 2
+            start = max(0, current_row - max_items // 2)
+            end = min(len(rows), start + max_items)
+
+            for idx, i in enumerate(range(start, end)):
+                r = rows[i]
+                y = idx + 1
+                prefix = "> " if i == current_row else "  "
+                preview = r["content"][: w - 40].replace("\n", " ")
+                line = f"{prefix}[{r['id']}] [{r['category'][:8]:8s}] IMP:{r['importance']:2d} | {preview}"
+
+                if i == current_row:
+                    stdscr.addstr(y, 0, line[:w-1], curses.A_BOLD)
+                else:
+                    stdscr.addstr(y, 0, line[:w-1])
+
+            key = stdscr.getch()
+            if key == ord('q'):
+                break
+            elif key == curses.KEY_UP and current_row > 0:
+                current_row -= 1
+            elif key == curses.KEY_DOWN and current_row < len(rows) - 1 or key == ord('j') and current_row < len(rows) - 1:
+                current_row += 1
+            elif key == ord('k') and current_row > 0:
+                current_row -= 1
+
+    curses.wrapper(run_tui)
+
+
 def main():
     parser = argparse.ArgumentParser(description="engram — Engram local memory CLI")
+    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
     sub = parser.add_subparsers(dest="cmd")
 
     p_save = sub.add_parser("save", help="Save a memory")
@@ -198,6 +333,14 @@ def main():
     p_del = sub.add_parser("delete", help="Delete a memory by ID")
     p_del.add_argument("id")
 
+    p_exp = sub.add_parser("export", help="Export all memories to a JSON file")
+    p_exp.add_argument("file", help="Path to the output JSON file")
+
+    p_imp = sub.add_parser("import", help="Import memories from a JSON file")
+    p_imp.add_argument("file", help="Path to the input JSON file")
+
+    sub.add_parser("tui", help="Launch the Terminal UI dashboard")
+
     args = parser.parse_args()
 
     if not args.cmd:
@@ -211,6 +354,9 @@ def main():
         "list": cmd_list,
         "stats": cmd_stats,
         "delete": cmd_delete,
+        "export": cmd_export,
+        "import": cmd_import,
+        "tui": cmd_tui,
     }
     cmds[args.cmd](args)
 

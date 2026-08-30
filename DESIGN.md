@@ -40,7 +40,7 @@ The design is intentionally boring. Every choice below was made to keep the syst
 
 ## 3. Why FTS5 (not vector embeddings, not pg_trgm)
 
-**Decision.** `CREATE VIRTUAL TABLE memories_fts USING fts5(id, content, tokenize='porter unicode61')`. The `porter` stemmer handles English morphology ("running" → "run"); `unicode61` handles non-ASCII. Search uses `MATCH` with `ORDER BY rank` (BM25), joined back to the main `memories` table for importance filtering.
+**Decision.** `CREATE VIRTUAL TABLE memories_fts USING fts5(id, content, tokenize='porter unicode61')`. The `porter` stemmer handles English morphology ("running" → "run"); `unicode61` handles non-ASCII. Search uses `MATCH` with `ORDER BY rank * importance` (BM25), joined back to the main `memories` table for importance scaling. We boost high-importance memories by scaling the negative FTS5 match score (`rank`), striking a perfect mathematical balance between textual relevance and manually assigned value.
 
 **What I rejected.**
 - **Vector embeddings (chromadb, faiss, pgvector).** Rejected for three reasons: (1) adds a runtime dependency and ~200MB of model weights, (2) embedding inference at ingestion costs ~50ms per row — kills batch throughput, (3) semantic search is overkill for a personal memory store where the user remembers the *words* they saved, not the *vibe*. If you save "deploy script for staging," you'll search "deploy," not "release procedure." FTS5 wins on that query and costs nothing.
@@ -53,7 +53,19 @@ The design is intentionally boring. Every choice below was made to keep the syst
 
 ---
 
-## 4. Why MCP over a custom protocol (not REST, not gRPC, not raw stdio JSON)
+## 4. Why Conflict Surfacing and Native Backups (Self-Healing)
+
+**Decision.** Engram warns the AI agent on save if it detects a highly similar memory, and uses Python's native `sqlite3.backup()` API for daily snapshots (`memory.db.bak`).
+
+**What I rejected.**
+- **Overwriting aggressively:** An agent saving "We use Mongo" shouldn't silently live next to an older "We use Postgres" memory, creating a schizophrenic context window.
+- **`shutil.copy2` for backups:** Because Engram runs in WAL mode, copying just the `.db` file without the `.db-wal` file risks generating corrupted or incomplete backups.
+
+**Why.** Conflict Surfacing uses a quick heuristic FTS5 query *before* insertion. If it finds overlaps, it attaches a warning payload directly to the JSON-RPC response so the LLM can self-correct or call `memory_delete`. Native backups ensure the personal datastore is highly resilient without needing an external cron job.
+
+---
+
+## 5. Why MCP over a custom protocol (not REST, not gRPC, not raw stdio JSON)
 
 **Decision.** Engram speaks JSON-RPC 2.0 over stdio, implements `initialize`, `tools/list`, `tools/call`, and the `notifications/*` lifecycle methods. `protocolVersion` is pinned to `2024-11-05`.
 

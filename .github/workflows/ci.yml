@@ -73,13 +73,13 @@ jobs:
                   if isinstance(node, ast.Import):
                       for alias in node.names:
                           top = alias.name.split('.')[0]
-                          if top and not is_stdlib(top):
+                          if top and not is_stdlib(top) and top not in ('server', 'engram'):
                               third_party.add(top)
                   elif isinstance(node, ast.ImportFrom):
                       # 'from datetime import timezone' -> module=datetime (stdlib)
                       if node.module:
                           top = node.module.split('.')[0]
-                          if top and not is_stdlib(top):
+                          if top and not is_stdlib(top) and top not in ('server', 'engram'):
                               third_party.add(top)
 
           if third_party:
