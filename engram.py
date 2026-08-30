@@ -245,16 +245,27 @@ def cmd_import(args):
     conn = server.get_db()
     conn.execute("BEGIN TRANSACTION")
     imported = 0
+    import re
     for r in data:
-        content = r["content"][:8000]
+        content = str(r.get("content", ""))[:8000]
+        try:
+            imp = max(1, min(10, int(r.get("importance", 5) or 5)))
+        except (ValueError, TypeError):
+            imp = 5
+            
+        def safe_date(d):
+            return str(d) if re.match(r"^\d{4}-\d{2}-\d{2}", str(d)) else server.now()
+            
+        created = safe_date(r.get("created_at", server.now()))
+        updated = safe_date(r.get("updated_at", server.now()))
+        
         try:
             conn.execute(
-
                 """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at)
                    VALUES(?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(id) DO UPDATE SET
                    category=excluded.category, content=excluded.content, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at, access_count=excluded.access_count""",
-                (r["id"], r.get("category", "general"), r["content"], r.get("tags", ""), r.get("importance", 5), r.get("created_at", server.now()), r.get("updated_at", server.now()), r.get("access_count", 0), r.get("last_accessed_at", "")),
+                (r["id"], r.get("category", "general"), content, r.get("tags", ""), imp, created, updated, r.get("access_count", 0), r.get("last_accessed_at", "")),
             )
             conn.execute("DELETE FROM memories_fts WHERE id=?", (r["id"],))
             conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (r["id"], r["content"]))

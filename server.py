@@ -6,6 +6,7 @@ Zero bloat. Zero cloud. Pure SQLite Standard Library.
 
 import hashlib
 import json
+import math
 import os
 import re
 import sqlite3
@@ -41,6 +42,13 @@ def get_db(read_only=False):
     global _SCHEMA_INITIALIZED, _LAST_DECAY_RUN
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
+    try:
+        conn.execute("SELECT EXP(1)")
+    except sqlite3.OperationalError:
+        try:
+            conn.create_function("EXP", 1, math.exp)
+        except Exception:
+            pass
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     os.chmod(DB_PATH, 0o600)
