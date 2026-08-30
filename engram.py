@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import json
 import datetime
 import hashlib
 import re
@@ -33,27 +34,30 @@ def make_id(content):
 
 
 def cmd_save(args):
+    import json
+    import server
     content = " ".join(args.content)
-    category = args.category or "general"
-    tags = args.tags or ""
-    importance = max(1, min(10, args.importance)) or 5
-    mid = make_id(content)
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at) 
-           VALUES(?,?,?,?,?,?,?,0,?) 
-           ON CONFLICT(id) DO UPDATE SET 
-           category=excluded.category, tags=excluded.tags, importance=excluded.importance, updated_at=excluded.updated_at, last_accessed_at=excluded.last_accessed_at""",
-        (mid, category, content, tags, importance, now(), now(), now()),
-    )
-    conn.execute("DELETE FROM memories_fts WHERE id=?", (mid,))
-    conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (mid, content))
-    conn.commit()
-    conn.close()
-    print(f"SAVED  id={mid}  cat={category}  importance={importance}")
-
-
-import json
+    importance = max(1, min(10, args.importance))
+    res = server.t_save({
+        "content": content,
+        "category": args.category,
+        "tags": args.tags,
+        "importance": importance
+    })
+    
+    if args.json:
+        print(json.dumps(res, indent=2))
+        return
+        
+    if "error" in res:
+        print(f"Error: {res['error']}")
+        return
+        
+    if "warnings" in res and res["warnings"]:
+        for w in res["warnings"]:
+            print(f"WARNING: {w}")
+            
+    print(f"SAVED [{res.get('id', 'unknown')}] [{args.category}] importance={importance}")
 
 
 def cmd_search(args):
