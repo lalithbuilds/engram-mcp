@@ -450,6 +450,8 @@ def handle(msg):
             }
         )
     elif method == "tools/call":
+        if mid_ is None:
+            return None
         p = msg.get("params") or {}
         tn = p.get("name", "")
         ta = p.get("arguments") or {}
