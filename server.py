@@ -87,6 +87,7 @@ def get_db(read_only=False):
                 backup_conn.close()
                 # Update mtime on the backup to track correctly
                 backup_path.touch()
+                os.chmod(backup_path, 0o600)
             except Exception as e:
                 sys.stderr.write(f"[engram-backup] Backup failed: {e}\n")
 
@@ -143,7 +144,7 @@ def t_auto_context(a):
 
     conn.close()
 
-    lines = [f"<memory id=\"{r['id']}\" category=\"{r['category']}\">\n{r['content']}\n</memory>" for r in rows]
+    lines = [f"<memory id=\"{r['id']}\" category=\"{r['category']}\">\n{str(r['content']).replace('</memory>', '')}\n</memory>" for r in rows]
     cats = {}
     for r in rows:
         cats[r["category"]] = cats.get(r["category"], 0) + 1
@@ -152,7 +153,7 @@ def t_auto_context(a):
 
 
 def t_smart_search(a):
-    query = a.get("query", "").strip()
+    query = str(a.get("query", "") or "").strip()
     limit = safe_int(a.get("limit", 5), 5, 1, 8)
     if not query:
         return {"error": "query required"}
@@ -518,7 +519,7 @@ def main():
         else:
             print("Usage: python3 server.py [--diagnostics]")
             sys.exit(0)
-    get_db()
+    get_db().close()
 
     for line in sys.stdin:
         try:

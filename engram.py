@@ -268,7 +268,7 @@ def cmd_import(args):
                 (r["id"], r.get("category", "general"), content, r.get("tags", ""), imp, created, updated, r.get("access_count", 0), r.get("last_accessed_at", "")),
             )
             conn.execute("DELETE FROM memories_fts WHERE id=?", (r["id"],))
-            conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (r["id"], r["content"]))
+            conn.execute("INSERT INTO memories_fts (id, content) VALUES (?, ?)", (r["id"], content))
             imported += 1
         except KeyError as e:
             print(f"Skipping malformed memory (missing {e})")
