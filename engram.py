@@ -36,7 +36,7 @@ def cmd_save(args):
     content = " ".join(args.content)
     category = args.category or "general"
     tags = args.tags or ""
-    importance = args.importance or 5
+    importance = max(1, min(10, args.importance)) or 5
     mid = make_id(content)
     conn = get_db()
     conn.execute(
@@ -58,7 +58,7 @@ import json
 
 def cmd_search(args):
     query = " ".join(args.query)
-    limit = args.limit or 5
+    limit = max(1, min(100, args.limit or 5))
     conn = get_db()
     query_clean = re.sub(r"[^\w\s]", " ", query).strip()
 
@@ -71,7 +71,7 @@ def cmd_search(args):
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank * m.importance * (1.0 / (1.0 + (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at))))))
+            ORDER BY (rank * m.importance * EXP(-0.05 * (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at)))))
             LIMIT ?
         """,
             (query_clean, limit),
@@ -145,7 +145,7 @@ def cmd_recall(args):
 def cmd_list(args):
     conn = get_db()
     rows = conn.execute(
-        "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC,created_at DESC LIMIT 50"
+        "SELECT id,category,content,importance,created_at FROM memories ORDER BY importance DESC,created_at DESC LIMIT 1000"
     ).fetchall()
     conn.close()
 
@@ -227,11 +227,15 @@ def cmd_import(args):
         print("Invalid format: expected a JSON array of memories.")
         return
 
+    
     conn = server.get_db()
+    conn.execute("BEGIN TRANSACTION")
     imported = 0
     for r in data:
+        content = r["content"][:8000]
         try:
             conn.execute(
+
                 """INSERT INTO memories (id,category,content,tags,importance,created_at,updated_at,access_count,last_accessed_at)
                    VALUES(?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(id) DO UPDATE SET

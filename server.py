@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ENGRAM MCP SERVER v4.3 — PONYTAIL EDITION (Aug 2026)
+ENGRAM MCP SERVER v1.0.0 — PONYTAIL EDITION (Aug 2026)
 Zero bloat. Zero cloud. Pure SQLite Standard Library.
 """
 
@@ -43,6 +43,7 @@ def get_db():
     conn = sqlite3.connect(str(DB_PATH), timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
+    os.chmod(DB_PATH, 0o600)
     conn.execute("PRAGMA synchronous=NORMAL;")
     if not _SCHEMA_INITIALIZED:
         conn.executescript(SCHEMA)
@@ -57,7 +58,7 @@ def get_db():
     # Auto-decay and Backup: throttle to 1 hour
     if time.time() - _LAST_DECAY_RUN > 3600:
         conn.execute(
-            "UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(created_at) > 30 AND julianday('now') - julianday(updated_at) >= 1",
+            "UPDATE memories SET importance = importance - 1, updated_at = ? WHERE importance > 1 AND julianday('now') - julianday(COALESCE(NULLIF(last_accessed_at, ''), created_at)) > 30 AND julianday('now') - julianday(updated_at) >= 1",
             (now(),),
         )
         conn.commit()
@@ -149,7 +150,7 @@ def t_smart_search(a):
         return {"error": "query required"}
 
     conn = get_db()
-    query_clean = re.sub(r"[^\w\s]", " ", query).strip()
+    query_clean = " OR ".join(w for w in re.sub(r"[^\w\s]", " ", query).strip().split() if w)
 
     if not query_clean:
         # Fallback if query was entirely punctuation
@@ -162,7 +163,7 @@ def t_smart_search(a):
             SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
-            ORDER BY (rank * m.importance * (1.0 / (1.0 + (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at))))))
+            ORDER BY (rank * m.importance * EXP(-0.05 * (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at)))))
             LIMIT ?
         """,
             (query_clean, limit),
@@ -225,17 +226,15 @@ def t_save(a):
             query_str = " OR ".join(words[:10])
             try:
                 candidates = conn.execute(
-                    """
-                    SELECT m.id, m.content
-                    FROM memories_fts f JOIN memories m ON f.id=m.id
-                    WHERE memories_fts MATCH ?
-                    LIMIT 3
-                    """,
+                    "SELECT m.id, m.content FROM memories_fts f JOIN memories m ON f.id=m.id WHERE memories_fts MATCH ? LIMIT 10",
                     (query_str,)
                 ).fetchall()
                 for c in candidates:
                     if c["id"] != mid:
-                        warnings.append(f"Similar memory found (ID {c['id']}): {c['content'][:50]}... Did you mean to update it?")
+                        # Prevent false positive from 1 shared word by checking actual overlap
+                        shared = set(w.lower() for w in words) & set(w.lower() for w in re.sub(r"[^\w\s]", " ", c["content"]).split() if len(w) > 3)
+                        if len(shared) >= 2:
+                            warnings.append(f"Similar memory found (ID {c['id']}): {c['content'][:50]}... Did you mean to update it?")
             except Exception as e:
                 sys.stderr.write(f"[engram-conflict] Warning FTS5 error: {e}\n")
 
@@ -490,7 +489,7 @@ def handle(msg):
 
 
 def main():
-    sys.stderr.write("[engram-mcp v4.2] Booting...\n")
+    sys.stderr.write("[engram-mcp v1.0.0] Booting...\n")
     if len(sys.argv) > 1:
         if sys.argv[1] == "--diagnostics":
             try:
