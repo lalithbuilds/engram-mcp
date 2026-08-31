@@ -25,6 +25,8 @@ We will respond within 48 hours and aim to patch within 7 days.
 
 Engram MCP is a **fully local** tool. It:
 - Stores all data in a local SQLite file (`~/engram-mcp/memory.db`)
+- Enforces strict `0600` permissions and `0700` directory access
+- Implements strict `.is_symlink()` defenses to prevent arbitrary file overwrite attacks during DB instantiation and backups
 - Never makes network requests
 - Never sends data to any external service
 - Has zero third-party dependencies
