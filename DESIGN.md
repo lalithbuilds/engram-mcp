@@ -1,5 +1,8 @@
 # DESIGN.md — engram-mcp
 
+<img src="https://capsule-render.vercel.app/api?type=rect&color=ff79c6&height=2&width=100%"/>
+
+
 > One file. Four decisions. Each one explains what I chose, what I rejected, and why.
 
 Engram is a memory layer for LLM agents. It exposes 6 tools over MCP (Model Context Protocol) and persists everything to a single SQLite file on disk. No cloud, no embedding service, no runtime dependencies beyond the Python standard library. The whole server is ~280 lines.

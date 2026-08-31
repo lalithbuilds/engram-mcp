@@ -1,5 +1,8 @@
 # Benchmarks
 
+<img src="https://capsule-render.vercel.app/api?type=rect&color=ff79c6&height=2&width=100%"/>
+
+
 > Last updated: 2026-08-30 (Corrected by Audit)
 
 ## Performance on `ubuntu-latest` / Python 3.12

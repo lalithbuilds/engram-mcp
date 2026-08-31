@@ -1,5 +1,8 @@
 # Contributing to Engram MCP
 
+<img src="https://capsule-render.vercel.app/api?type=rect&color=ff79c6&height=2&width=100%"/>
+
+
 Thanks for your interest in contributing! This project follows the **Ponytail Philosophy**: keep it minimal, stdlib-only, and zero-bloat.
 
 ## Ground Rules
