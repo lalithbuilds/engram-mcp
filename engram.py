@@ -73,7 +73,7 @@ def cmd_search(args):
     try:
         rows = conn.execute(
             """
-            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
+            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at, m.updated_at, m.access_count, m.last_accessed_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
             ORDER BY (rank * m.importance * EXP(-0.05 * (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at)))))

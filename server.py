@@ -185,7 +185,7 @@ def t_smart_search(a):
         # FTS5 bm25 rank is negative (lower is better). We multiply by importance to boost high-importance memories.
         rows = conn.execute(
             """
-            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at
+            SELECT m.id, m.category, m.content, m.tags, m.importance, m.created_at, m.updated_at, m.access_count, m.last_accessed_at
             FROM memories_fts f JOIN memories m ON f.id=m.id
             WHERE memories_fts MATCH ? 
             ORDER BY (rank * m.importance * EXP(-0.05 * (julianday('now') - julianday(COALESCE(NULLIF(m.last_accessed_at, ''), m.created_at)))))
@@ -199,7 +199,7 @@ def t_smart_search(a):
 
     if not rows:
         rows = conn.execute(
-            "SELECT id, category, content, tags, importance, created_at FROM memories WHERE content LIKE ? ORDER BY importance DESC LIMIT ?",
+            "SELECT id, category, content, tags, importance, created_at, updated_at, access_count, last_accessed_at FROM memories WHERE content LIKE ? ORDER BY importance DESC LIMIT ?",
             (f"%{query}%", limit),
         ).fetchall()
 
@@ -245,7 +245,7 @@ def t_save(a):
     # Conflict surfacing: if saving a new memory, check for potentially conflicting items
     if not provided_id:
         query_clean = re.sub(r"[^\w\s]", " ", content).strip()
-        words = [w for w in query_clean.split() if len(w) > 3]
+        words = [w for w in query_clean.split() if len(w) > 2]
         if words:
             # Query top 3 matching memories based on the text
             query_str = " OR ".join(words[:10])
@@ -257,7 +257,7 @@ def t_save(a):
                 for c in candidates:
                     if c["id"] != mid:
                         # Prevent false positive from 1 shared word by checking actual overlap
-                        shared = set(w.lower() for w in words) & set(w.lower() for w in re.sub(r"[^\w\s]", " ", c["content"]).split() if len(w) > 3)
+                        shared = set(w.lower() for w in words) & set(w.lower() for w in re.sub(r"[^\w\s]", " ", c["content"]).split() if len(w) > 2)
                         if len(shared) >= 2:
                             warnings.append(f"Similar memory found (ID {c['id']}): {c['content'][:50]}... Did you mean to update it?")
             except Exception as e:
