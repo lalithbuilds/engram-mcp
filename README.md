@@ -1,14 +1,23 @@
 <div align="center">
-  <h1>🧠 Engram MCP</h1>
-  <p><strong>A zero-dependency, self-healing local memory layer for AI coding agents.</strong></p>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=10B981&height=200&section=header&text=Engram%20MCP&fontSize=75&fontAlignY=35&animation=fadeIn&fontColor=ffffff" width="100%"/>
+  
+  <br>
+  
+  <a href="https://git.io/typing-svg">
+    <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=22&duration=3000&pause=1000&color=10B981&center=true&vCenter=true&width=800&lines=Self-Healing+Local+Memory+Layer;Zero-Dependency+Python+Architecture;Full+FTS5+BM25+Keyword+Search;Ebbinghaus+Exponential+Decay" alt="Typing SVG" />
+  </a>
+  
+  <br>
+  
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
+  <img src="https://img.shields.io/badge/python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
+  <img src="https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/Model_Context_Protocol-5C2D91?style=for-the-badge" alt="MCP">
 </div>
+
+<br>
 
 ![Engram Demo](./assets/demo.gif)
-
-<div align="center">
-  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
-</div>
 
 Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
