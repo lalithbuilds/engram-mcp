@@ -1,18 +1,17 @@
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=10B981&height=200&section=header&text=Engram%20MCP&fontSize=75&fontAlignY=35&animation=fadeIn&fontColor=ffffff" width="100%"/>
+  <img src="https://capsule-render.vercel.app/api?type=cylinder&color=gradient&customColorList=1,2&height=180&section=header&text=Engram%20MCP&fontSize=75&fontAlignY=45&animation=scaleIn&fontColor=ffffff&desc=Self-Healing%20Agent%20Memory&descAlignY=65&descAlign=62" width="100%"/>
   
   <br>
   
   <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=22&duration=3000&pause=1000&color=10B981&center=true&vCenter=true&width=800&lines=Self-Healing+Local+Memory+Layer;Zero-Dependency+Python+Architecture;Full+FTS5+BM25+Keyword+Search;Ebbinghaus+Exponential+Decay" alt="Typing SVG" />
+    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=3000&pause=1000&color=ff79c6&center=true&vCenter=true&width=800&lines=Self-Healing+Local+Memory+Layer;Zero-Dependency+Python+Architecture;Full+FTS5+BM25+Keyword+Search;Ebbinghaus+Exponential+Decay" alt="Typing SVG" />
   </a>
   
   <br>
   
-  <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
-  <img src="https://img.shields.io/badge/python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
-  <img src="https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
-  <img src="https://img.shields.io/badge/Model_Context_Protocol-5C2D91?style=for-the-badge" alt="MCP">
+  <img src="https://img.shields.io/badge/License-MIT-282a36.svg?style=for-the-badge&color=ff79c6" alt="License: MIT">
+  <img src="https://img.shields.io/badge/python-3.8+-282a36.svg?style=for-the-badge&logo=python&logoColor=ff79c6&color=ff79c6" alt="Python 3.8+">
+  <img src="https://img.shields.io/badge/SQLite-282a36?style=for-the-badge&logo=sqlite&logoColor=ff79c6&color=ff79c6" alt="SQLite">
 </div>
 
 <br>
