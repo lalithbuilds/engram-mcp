@@ -160,7 +160,7 @@ python3 engram.py import backup.json
 
 We welcome contributions! Specifically, we are looking for help improving the terminal UI (TUI) and making FTS5 search even smarter.
 Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-We welcome contributions! Specifically, we are looking for help adding a `--json` export flag to the CLI. 
+We welcome contributions! Specifically, we are looking for help improving the terminal UI (TUI) and expanding the semantic search capabilities.
 Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](https://github.com/lalithbuilds/engram-mcp/blob/main/CONTRIBUTING.md) for guidelines.
 
 ## 🐛 Troubleshooting
