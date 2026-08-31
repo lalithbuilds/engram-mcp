@@ -1,16 +1,14 @@
-# 🧠 Engram MCP
+<div align="center">
+  <h1>🧠 Engram MCP</h1>
+  <p><strong>A zero-dependency, self-healing local memory layer for AI coding agents.</strong></p>
+</div>
 
-**A zero-dependency, auto-decaying, pure SQLite MCP server for persistent AI agent memory.**
+![Engram Demo](./assets/demo.gif)
 
-*Built in an afternoon. Tested harder than it was built. Documented because the code isn't enough.*
-
-> *engram (noun): a hypothesized physical trace of memory stored in the brain — the biological basis of how memories persist.*
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8+-green.svg)](https://python.org)
-[![Dependencies](https://img.shields.io/badge/Dependencies-Zero-orange.svg)](#)
-[![Protocol](https://img.shields.io/badge/Protocol-MCP-purple.svg)](https://modelcontextprotocol.io)
-[![CI](https://github.com/lalithbuilds/engram-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/lalithbuilds/engram-mcp/actions/workflows/ci.yml)
+<div align="center">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
+</div>
 
 Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
