@@ -91,10 +91,11 @@ LLM host (Claude / Cursor / Zed)
         ▼
   ~/engram-mcp/memory.db  (SQLite + WAL + FTS5)
         ├── memories       (PK: sha1(content)[:12])
-        └── memories_fts   (FTS5, porter+unicode61)
+        ├── memories_fts   (FTS5, porter+unicode61)
+        └── triggers       (Native SQLite FTS sync)
 ```
 
-Six tools: `memory_auto_context` (session boot), `memory_smart_search` (keyword), `memory_save`, `memory_save_block`, `memory_delete`, `memory_stats`. Auto-decay runs on `get_db()` with a 1-hour throttle — memories older than 30 days lose 1 importance point per day until they hit floor 1.
+Six tools: `memory_auto_context` (session boot), `memory_smart_search` (keyword), `memory_save`, `memory_save_block`, `memory_delete`, `memory_stats`. Auto-decay uses an Ebbinghaus exponential time-decay algorithm. Search rankings are dynamically penalized based on the time since the memory was last accessed.
 
 ## Known limitations
 

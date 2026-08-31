@@ -52,13 +52,13 @@ Engram is for developers who want **100% local, zero-dependency, zero-bloat** ag
 
 1.  **🐍 Zero Dependencies**
     Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`, `curses`). No `pip install` required.
-2.  **⏳ Intelligent Auto-Decay (Forgetting Mechanism)**
+2.  **⏳ Ebbinghaus Auto-Decay (Forgetting Mechanism)**
     Unlike other servers that hoard data forever, Engram prevents stale context poisoning by employing a background auto-decay algorithm:
     *   Whenever an agent searches or retrieves a memory, it automatically bumps the `access_count` to signal importance.
-    *   Whenever the MCP server spins up, it runs a background decay query: any memory that hasn't been accessed in 30 days automatically loses 1 point of `importance`.
+    *   Whenever the MCP server spins up, it applies an Ebbinghaus exponential time-decay curve: older, unaccessed memories gracefully fade in relevance, while frequently accessed ones are preserved of `importance`.
     Your agent's context window stays clean, relevant, and self-maintaining without manual intervention.
-3.  **🛡️ Enterprise-Grade Concurrency & Backups**
-    Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes. The system also performs daily automatic native SQLite backups (`memory.db.bak`) to protect against payload corruption.
+3.  **🛡️ Enterprise-Grade Concurrency, Triggers & Backups**
+    Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes. The system also performs daily automatic native SQLite backups (`memory.db.bak`) to protect against payload corruption. Data integrity is guaranteed via native SQLite AFTER INSERT/UPDATE/DELETE triggers that sync the FTS index, making desyncs mathematically impossible.
 4.  **🔒 Payload Bounding & Resilience**
     Engram strictly clamps memory outputs (max 8 results) to prevent LLM context-window blowouts, and truncates incoming memories to 8,000 characters to prevent payload bloat.
 5.  **🧠 Conflict Surfacing (Self-Healing)**
