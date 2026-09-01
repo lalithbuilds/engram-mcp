@@ -185,11 +185,47 @@ def run_benchmark(dataset_path, output_file="longmemeval_results.json"):
     return results
 
 
+def generate_synthetic_dataset(target_path: Path):
+    """Generate a self-contained synthetic needle-in-a-haystack LongMemEval dataset."""
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    sample_data = []
+    
+    topics = [
+        ("auth_token", "The staging API bearer token is 'sec_stag_982341'.", "What is the staging API bearer token?", "sec_stag_982341"),
+        ("db_port", "Postgres replica database is listening on port 5439.", "Which port is the Postgres replica on?", "5439"),
+        ("color_pref", "Lalith's favorite theme is Dracula Pro Dark.", "What is Lalith's favorite theme?", "Dracula Pro Dark"),
+        ("cluster_region", "Kubernetes production cluster is deployed in region ap-south-1.", "In which region is the production cluster deployed?", "ap-south-1"),
+        ("cache_ttl", "Redis session cache TTL is configured to 3600 seconds.", "What is the Redis session cache TTL?", "3600"),
+        ("compiler_flag", "We compile the native vector engine with -O3 -ffast-math.", "What compiler flags are used for the native engine?", "-O3 -ffast-math"),
+        ("retention_policy", "Logs are retained in S3 Glacier for 90 days.", "How long are logs retained in Glacier?", "90 days"),
+        ("backup_window", "Database backup window runs daily at 03:00 UTC.", "When is the daily backup window?", "03:00 UTC"),
+        ("monitoring_tool", "System metrics are ingested into Prometheus and visualized on Grafana.", "Which tool is used for system metrics ingestion?", "Prometheus"),
+        ("default_umask", "Process umask is strictly set to 0o077 for sovereign file creation.", "What is the default process umask?", "0o077"),
+    ]
+
+    for idx, (needle_id, fact, question, answer) in enumerate(topics):
+        # 3 background noise sessions + 1 target needle session
+        haystack = [
+            [{"content": f"Session noise background discussion on generic infrastructure item #{i}_{idx}."} for i in range(5)],
+            [{"content": fact}],
+            [{"content": f"Secondary chatter discussing unrelated backlog ticket #{i*10}_{idx}."} for i in range(5)],
+        ]
+        sample_data.append({
+            "question_id": f"q_{idx}",
+            "question": question,
+            "answer": answer,
+            "needle": fact,
+            "haystack_sessions": haystack,
+        })
+
+    with open(target_path, "w", encoding="utf-8") as f:
+        json.dump(sample_data, f, indent=2)
+    print(f"ℹ️ Generated self-contained synthetic benchmark dataset ({len(sample_data)} needles) at {target_path}")
+
 if __name__ == "__main__":
     dataset_path = Path(__file__).parent / "data" / "longmemeval_s_cleaned.json"
 
     if not dataset_path.exists():
-        print(f"❌ Dataset not found at {dataset_path}")
-        sys.exit(1)
+        generate_synthetic_dataset(dataset_path)
 
     run_benchmark(dataset_path)

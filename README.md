@@ -173,7 +173,7 @@ Check out our issues labeled `good first issue` to get started. See [CONTRIBUTIN
 
 ### Common Issues
 
-**"DB not found at ~/.engram-mcp/memory.db. Run the MCP server first."**
+**"DB not found at ~/engram-mcp/memory.db. Run the MCP server first."**
 - The SQLite database is created when the MCP server starts for the first time.
 - Make sure you're running `server.py` before using the CLI.
 - Check that the MCP server configuration points to the correct path.

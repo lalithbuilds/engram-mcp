@@ -5,7 +5,7 @@
 
 > One file. Four decisions. Each one explains what I chose, what I rejected, and why.
 
-Engram is a memory layer for LLM agents. It exposes 6 tools over MCP (Model Context Protocol) and persists everything to a single SQLite file on disk. No cloud, no embedding service, no runtime dependencies beyond the Python standard library. The whole server is ~280 lines.
+Engram is a memory layer for LLM agents. It exposes 6 tools over MCP (Model Context Protocol) and persists everything to a single SQLite file on disk. No cloud, no embedding service, no runtime dependencies beyond the Python standard library. The whole server is ~560 lines of self-contained, defensive standard-library Python.
 
 The design is intentionally boring. Every choice below was made to keep the system debuggable by a single developer at 2 AM.
 
