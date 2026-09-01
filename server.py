@@ -136,7 +136,11 @@ MAX_CONTENT = 8000
 
 
 # Categories excluded from auto-context boot (noise/bulk-import data)
-_NOISE_CATS = ("stress_test", "obsidian_import")
+_NOISE_CATS = tuple(
+    c.strip()
+    for c in os.environ.get("ENGRAM_EXCLUDE_CATEGORIES", "stress_test,obsidian_import").split(",")
+    if c.strip()
+)
 
 
 def t_auto_context(a):
