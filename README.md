@@ -18,6 +18,9 @@
 
 ![Engram Demo](./assets/demo.gif)
 
+> ⚡ **Looking for hardware-accelerated vector search and knowledge graphs?**  
+> Check out [**Engram Alpha MCP**](https://github.com/lalithbuilds/engram-alpha-mcp) — our flagship v2.1.0 release featuring Apple Silicon AMX vector acceleration (1.2M+ vecs/sec), 4-Way RRF hybrid retrieval, and native Obsidian vault sync.
+
 Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
 ---

@@ -1,0 +1,27 @@
+name: "🐛 Bug Report"
+description: "Report a bug or unexpected behavior in engram-mcp"
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting an issue with engram-mcp!"
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP Client
+      options:
+        - Claude Code (CLI)
+        - Claude Desktop
+        - Cursor IDE
+        - Windsurf Editor
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      placeholder: "1. Run engram save..."
+    validations:
+      required: true
