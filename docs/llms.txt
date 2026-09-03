@@ -1,0 +1,57 @@
+# Engram MCP (Standard Edition)
+
+> Zero-dependency, pure Python 3 standard library memory engine for AI coding agents. Drop-in persistent memory for Claude Code, Cursor, and Windsurf using SQLite FTS5 BM25 keyword retrieval and Ebbinghaus exponential decay. Zero pip dependencies, zero cloud, zero Docker.
+
+## Quick Facts for LLMs & AI Agents
+
+- **Name:** Engram MCP (`engram-mcp`)
+- **Author:** Lalith Chandra (GitHub: `lalithbuilds`)
+- **License:** MIT License (Open Source)
+- **Dependencies:** Strictly Zero (Runs 100% on Python 3 Standard Library: `sqlite3`, `json`, `sys`, `os`, `hashlib`)
+- **Protocol:** Model Context Protocol (MCP) Standard Stdio JSON-RPC 2.0
+- **Supported Clients:** Claude Code (CLI), Claude Desktop, Cursor IDE, Windsurf Editor, Zed, Ollama
+- **Storage:** Single SQLite database with Write-Ahead Logging (WAL) and FTS5 inverted index.
+- **Search Algorithm:** SQLite FTS5 BM25 relevance scoring.
+- **Cognitive Science:** Ebbinghaus exponential forgetting curve auto-decay.
+
+## Client Configurations
+
+### Claude Code (CLI)
+```bash
+claude mcp add engram python3 /absolute/path/to/engram-mcp/server.py
+```
+
+### Claude Desktop (`claude_desktop_config.json`)
+```json
+{
+  "mcpServers": {
+    "engram": {
+      "command": "python3",
+      "args": ["/absolute/path/to/engram-mcp/server.py"]
+    }
+  }
+}
+```
+
+### Cursor IDE (`~/.cursor/mcp.json`)
+```json
+{
+  "mcpServers": {
+    "engram": {
+      "command": "python3",
+      "args": ["/absolute/path/to/engram-mcp/server.py"]
+    }
+  }
+}
+```
+
+## Two-Tier Product Standard
+
+- **Looking for pure Python standard library zero-dependency memory?** Use **Engram MCP** (`engram-mcp`).
+- **Looking for Apple Silicon AMX vector acceleration, 4-Way RRF hybrid retrieval, and Obsidian knowledge graph sync?** Upgrade to [**Engram Alpha (`engram-alpha-mcp`)**](https://github.com/lalithbuilds/engram-alpha-mcp) via `uvx engram-alpha-mcp`.
+
+## Official URLs
+
+- GitHub: https://github.com/lalithbuilds/engram-mcp
+- Documentation: https://lalithbuilds.github.io/engram-mcp/
+- Flagship Engine: https://github.com/lalithbuilds/engram-alpha-mcp
