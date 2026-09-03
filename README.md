@@ -19,7 +19,7 @@
 ![Engram Demo](./assets/demo.gif)
 
 > ⚡ **Looking for hardware-accelerated vector search and knowledge graphs?**  
-> Check out [**Engram Alpha MCP**](https://github.com/lalithbuilds/engram-alpha-mcp) — our flagship v2.1.0 release featuring Apple Silicon AMX vector acceleration (1.2M+ vecs/sec), 4-Way RRF hybrid retrieval, and native Obsidian vault sync.
+> Check out [**Episoda Alpha MCP**](https://github.com/lalithbuilds/episoda-alpha-mcp) — our flagship v2.1.0 release featuring Apple Silicon AMX vector acceleration (1.2M+ vecs/sec), 4-Way RRF hybrid retrieval, and native Obsidian vault sync.
 
 Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
@@ -32,16 +32,16 @@ The agent doesn't remember that you prefer `pnpm` over `npm`, it forgets the arc
 
 Existing solutions try to fix this by bolting on massive Vector Databases (PostgreSQL/pgvector, Chroma, Pinecone) that require heavy dependencies, Docker containers, and expensive OpenAI API calls just to generate embeddings.
 
-## 💡 The Solution: What is Engram MCP?
+## 💡 The Solution: What is Episoda Core MCP?
 
-**Engram MCP** is a ruthlessly optimized, zero-dependency alternative. It uses standard **SQLite FTS5 (Full-Text Search)** to achieve blazing-fast keyword retrieval entirely locally. You simply drop the `server.py` script into your MCP configuration, and your agent instantly gains the ability to remember, recall, and manage its own long-term memory across sessions.
+**Episoda Core MCP** is a ruthlessly optimized, zero-dependency alternative. It uses standard **SQLite FTS5 (Full-Text Search)** to achieve blazing-fast keyword retrieval entirely locally. You simply drop the `server.py` script into your MCP configuration, and your agent instantly gains the ability to remember, recall, and manage its own long-term memory across sessions.
 
 
 
 ### Key Benefits
 
 *   **Stop Repeating Yourself:** Teach your agent your preferences, tech stack, and architectural decisions *once*. It will automatically recall them on the next boot.
-*   **Zero Infrastructure:** No databases to spin up. Engram automatically creates a local SQLite file in your home directory (`~/engram-mcp/memory.db`).
+*   **Zero Infrastructure:** No databases to spin up. Engram automatically creates a local SQLite file in your home directory (`~/episoda-core-mcp/memory.db`).
 *   **Zero API Costs:** Because it uses local BM25/FTS5 keyword indexing instead of semantic embeddings, you pay $0 in API credits for memory retrieval.
 *   **Total Data Privacy:** Your codebase context and architectural secrets never leave your local machine.
 
@@ -87,7 +87,7 @@ Engram is for developers who want **100% local, zero-dependency, zero-bloat** ag
                │  JSON-RPC 2.0 over STDIO
                ▼
 ┌──────────────────────────────────────────────┐
-│         Engram MCP Server (server.py)        │
+│         Episoda Core MCP Server (server.py)        │
 │  ┌────────────┐  ┌─────────────────────────┐ │
 │  │ Tool Router│  │  SQLite3 + FTS5 Engine  │ │
 │  │ Auto-Decay │  │  WAL Mode Concurrency   │ │
@@ -111,8 +111,8 @@ When an agent requests a memory, Engram performs a multi-pass FTS5 keyword searc
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/lalithbuilds/engram-mcp.git
-cd engram-mcp
+git clone https://github.com/lalithbuilds/episoda-core-mcp.git
+cd episoda-core-mcp
 ```
 
 ### 2. Configure Your MCP Client
@@ -124,7 +124,7 @@ Add Engram to your MCP configuration file (e.g., `claude_desktop_config.json` or
     "engram": {
       "command": "python3",
       "args": ["server.py"],
-      "cwd": "/absolute/path/to/engram-mcp"
+      "cwd": "/absolute/path/to/episoda-core-mcp"
     }
   }
 }
@@ -170,13 +170,13 @@ python3 engram.py import backup.json
 We welcome contributions! Specifically, we are looking for help improving the terminal UI (TUI) and making FTS5 search even smarter.
 Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 We welcome contributions! Specifically, we are looking for help improving the terminal UI (TUI) and expanding the semantic search capabilities.
-Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](https://github.com/lalithbuilds/engram-mcp/blob/main/CONTRIBUTING.md) for guidelines.
+Check out our issues labeled `good first issue` to get started. See [CONTRIBUTING.md](https://github.com/lalithbuilds/episoda-core-mcp/blob/main/CONTRIBUTING.md) for guidelines.
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**"DB not found at ~/engram-mcp/memory.db. Run the MCP server first."**
+**"DB not found at ~/episoda-core-mcp/memory.db. Run the MCP server first."**
 - The SQLite database is created when the MCP server starts for the first time.
 - Make sure you're running `server.py` before using the CLI.
 - Check that the MCP server configuration points to the correct path.
@@ -201,7 +201,7 @@ Check out our issues labeled `good first issue` to get started. See [CONTRIBUTIN
 
 ### Getting Help
 
-- Check the [GitHub Issues](https://github.com/lalithbuilds/engram-mcp/issues) for known problems.
+- Check the [GitHub Issues](https://github.com/lalithbuilds/episoda-core-mcp/issues) for known problems.
 - Open a new issue with:
   - Your Python version (`python3 --version`)
   - The exact error message
