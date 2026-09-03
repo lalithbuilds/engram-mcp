@@ -1,33 +1,14 @@
 cff-version: 1.2.0
-title: Engram MCP
-message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
-type: software
+message: "If you use Engram MCP in your research or project, please cite it as below."
+title: "Engram MCP: Zero-Dependency Pure Python Stdlib Memory Engine for AI Agents"
+abstract: "A zero-dependency, pure Python 3 standard library Model Context Protocol (MCP) server for persistent AI agent memory with SQLite FTS5 BM25 search and Ebbinghaus decay."
 authors:
-  - family-names: Chandra
-    given-names: Lalith
-    alias: lalithbuilds
-repository-code: https://github.com/lalithbuilds/engram-mcp
-url: https://github.com/lalithbuilds/engram-mcp
-license: MIT
-version: 1.0.0
-date-released: '2026-07-27'
-keywords:
-  - MCP
-  - model-context-protocol
-  - AI agents
-  - memory
-  - sqlite
-  - python
-  - claude-code
-  - cursor
-  - windsurf
-  - zero-dependency
-  - persistent-memory
-  - agentic-ai
-abstract: >-
-  Engram MCP is a zero-dependency, pure Python stdlib MCP server
-  that gives AI agents (Claude Code, Cursor, Windsurf) persistent
-  memory across sessions using SQLite FTS5. No cloud, no Docker,
-  no API costs.
+  - family-names: "Chandra"
+    given-names: "Lalith"
+    alias: "lalithbuilds"
+    website: "https://github.com/lalithbuilds"
+version: "1.0.0"
+date-released: "2026-09-03"
+repository-code: "https://github.com/lalithbuilds/engram-mcp"
+url: "https://lalithbuilds.github.io/engram-mcp/"
+license: "MIT"
