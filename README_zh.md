@@ -11,7 +11,7 @@
 <br>
 
 > ⚡ **硬件加速与向量图谱旗舰版**  
-> 如果您追求 Apple Silicon AMX 硬件加速（120万+ 向量/秒）与 Obsidian 双链知识图谱，请体验旗舰版：[**Episoda Alpha MCP**](https://github.com/lalithbuilds/episoda-alpha-mcp)。
+> 如果您追求 Apple Silicon AMX 硬件加速（120万+ 向量/秒）与 Obsidian 双链知识图谱，请体验旗舰版：[**Episodai**](https://github.com/lalithbuilds/episodai)。
 
 **Episoda Core MCP** 是一个针对 AI 编程智能体（Claude Code, Cursor, Windsurf 等）的超轻量、极速本地持久化记忆层。它完全基于 Python 3 标准库（`sqlite3`、`json`、`hashlib`）构建。
 
