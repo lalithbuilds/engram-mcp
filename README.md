@@ -73,7 +73,7 @@ Episoda Core MCP is for developers who want **100% local, zero-dependency, zero-
 5.  **🧠 Conflict Surfacing (Self-Healing)**
     Built-in heuristic checks warn AI agents during memory saving if they are attempting to store contradicting contexts (e.g. "We use Postgres" vs "We use Mongo").
 6.  **⌨️ Advanced CLI & Terminal UI (TUI)**
-    Comes with a built-in terminal tool (`engram.py`) and a full-screen interactive `tui` dashboard. Human developers can manually view, edit, export, import, or search the agent's memories at any time, with deterministic `--json` outputs available for machine parsing.
+    Comes with a built-in terminal tool (`episoda.py`) and a full-screen interactive `tui` dashboard. Human developers can manually view, edit, export, import, or search the agent's memories at any time, with deterministic `--json` outputs available for machine parsing.
 
 ---
 
@@ -135,32 +135,32 @@ No virtual environments, no `requirements.txt`. Your agent will now automaticall
 
 ---
 
-## 🛠️ The `engram` CLI Tool
+## 🛠️ The `episoda` CLI Tool
 
-You are always in control of what the agent remembers. You can use the bundled `engram.py` CLI to interact with the database yourself.
+You are always in control of what the agent remembers. You can use the bundled `episoda.py` CLI to interact with the database yourself.
 
 ```bash
 # Save a new memory for the agent manually
-python3 engram.py save "We use Tailwind CSS for all styling, never raw CSS." --category frontend --importance 10
+python3 episoda.py save "We use Tailwind CSS for all styling, never raw CSS." --category frontend --importance 10
 
 # Search what the agent knows about a topic (can also output as JSON)
-python3 engram.py --json search "Tailwind"
+python3 episoda.py --json search "Tailwind"
 
 # List all memories in the database
-python3 engram.py list
+python3 episoda.py list
 
 # Open the interactive Terminal UI Dashboard
-python3 engram.py tui
+python3 episoda.py tui
 
 # Delete a specific memory by its ID
-python3 engram.py delete abc123def456
+python3 episoda.py delete abc123def456
 
 # View database size and category breakdown
-python3 engram.py stats
+python3 episoda.py stats
 
 # Export memories to a JSON file (or import them) for Git sync
-python3 engram.py export backup.json
-python3 engram.py import backup.json
+python3 episoda.py export backup.json
+python3 episoda.py import backup.json
 ```
 
 ---
@@ -185,7 +185,7 @@ Check out our issues labeled `good first issue` to get started. See [CONTRIBUTIN
 - This happens when multiple processes try to write to the database simultaneously.
 - Episoda Core uses WAL mode which handles most concurrency, but if you see this:
   - Wait a moment and try again (the lock is usually temporary).
-  - Check if another `engram` process is running.
+  - Check if another `episoda` process is running.
   - Restart the MCP server if the issue persists.
 
 **MCP client fails to parse stdio output**
@@ -197,7 +197,7 @@ Check out our issues labeled `good first issue` to get started. See [CONTRIBUTIN
 **"Warning: fragment with name X already exists"**
 - This is a warning about duplicate memory IDs, not an error.
 - It typically means the same content was saved multiple times.
-- Use `engram list` and `engram delete <id>` to remove duplicates.
+- Use `episoda list` and `episoda delete <id>` to remove duplicates.
 
 ### Getting Help
 
