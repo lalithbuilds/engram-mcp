@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=cylinder&color=gradient&customColorList=1,2&height=180&section=header&text=Engram%20MCP&fontSize=75&fontAlignY=45&animation=scaleIn&fontColor=ffffff&desc=Self-Healing%20Agent%20Memory&descAlignY=65&descAlign=62" width="100%"/>
+  <img src="https://capsule-render.vercel.app/api?type=cylinder&color=gradient&customColorList=1,2&height=180&section=header&text=Episoda%20Core%20MCP&fontSize=75&fontAlignY=45&animation=scaleIn&fontColor=ffffff&desc=Self-Healing%20Agent%20Memory&descAlignY=65&descAlign=62" width="100%"/>
   
   <br>
   
@@ -16,12 +16,12 @@
 
 <br>
 
-![Engram Demo](./assets/demo.gif)
+![Episoda Core Demo](./assets/demo.gif)
 
 > ⚡ **Looking for hardware-accelerated vector search and knowledge graphs?**  
 > Check out [**Episoda Alpha MCP**](https://github.com/lalithbuilds/episoda-alpha-mcp) — our flagship v2.1.0 release featuring Apple Silicon AMX vector acceleration (1.2M+ vecs/sec), 4-Way RRF hybrid retrieval, and native Obsidian vault sync.
 
-Engram is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
+Episoda Core MCP is a fully local, lightning-fast memory layer for AI agents (Claude Code, Cursor, Windsurf, etc.) connected via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It is built entirely on the Python 3 standard library. No cloud API keys, no vector databases, no Docker, and no bloat.
 
 ---
 
@@ -41,7 +41,7 @@ Existing solutions try to fix this by bolting on massive Vector Databases (Postg
 ### Key Benefits
 
 *   **Stop Repeating Yourself:** Teach your agent your preferences, tech stack, and architectural decisions *once*. It will automatically recall them on the next boot.
-*   **Zero Infrastructure:** No databases to spin up. Engram automatically creates a local SQLite file in your home directory (`~/episoda-core-mcp/memory.db`).
+*   **Zero Infrastructure:** No databases to spin up. Episoda Core automatically creates a local SQLite file in your home directory (`~/episoda-core-mcp/memory.db`).
 *   **Zero API Costs:** Because it uses local BM25/FTS5 keyword indexing instead of semantic embeddings, you pay $0 in API credits for memory retrieval.
 *   **Total Data Privacy:** Your codebase context and architectural secrets never leave your local machine.
 
@@ -51,25 +51,25 @@ Existing solutions try to fix this by bolting on massive Vector Databases (Postg
 
 The AI agent memory ecosystem (like **Letta/MemGPT** or **AgentMemory**) is currently dominated by heavy frameworks requiring Postgres, pgvector, 15+ dependencies, and cloud embedding models. 
 
-**Engram is the "Occam's Razor" alternative.** It rejects semantic vector embeddings in favor of blazing-fast SQLite FTS5 (BM25 keyword search). 
+**Episoda Core MCP is the "Occam's Razor" alternative.** It rejects semantic vector embeddings in favor of blazing-fast SQLite FTS5 (BM25 keyword search). 
 * You don't need a 768-dimensional vector embedding to remember that you prefer `pnpm` over `npm`. 
 * You don't need an external API call to recall your project's architecture. 
 
-Engram is for developers who want **100% local, zero-dependency, zero-bloat** agent memory that works completely offline and runs in <2ms.
+Episoda Core MCP is for developers who want **100% local, zero-dependency, zero-bloat** agent memory that works completely offline and runs in <2ms.
 
 ## 🚀 Core Capabilities & Features
 
 1.  **🐍 Zero Dependencies**
     Runs entirely on the Python Standard Library (`sqlite3`, `json`, `sys`, `hashlib`, `curses`). No `pip install` required.
 2.  **⏳ Ebbinghaus Auto-Decay (Forgetting Mechanism)**
-    Unlike other servers that hoard data forever, Engram prevents stale context poisoning by employing a background auto-decay algorithm:
+    Unlike other servers that hoard data forever, Episoda Core prevents stale context poisoning by employing a background auto-decay algorithm:
     *   Whenever an agent searches or retrieves a memory, it automatically bumps the `access_count` to signal importance.
     *   Whenever the MCP server spins up, it applies an Ebbinghaus exponential time-decay curve: older, unaccessed memories gracefully fade in relevance, while frequently accessed ones are preserved of `importance`.
     Your agent's context window stays clean, relevant, and self-maintaining without manual intervention.
 3.  **🛡️ Enterprise-Grade Concurrency, Triggers & Backups**
-    Designed for multi-agent workflows. Engram implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes. The system also performs daily automatic native SQLite backups (`memory.db.bak`) to protect against payload corruption. Data integrity is guaranteed via native SQLite AFTER INSERT/UPDATE/DELETE triggers that sync the FTS index, making desyncs mathematically impossible.
+    Designed for multi-agent workflows. Episoda Core implements SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and strict connection timeouts. You can run Cursor and Claude Code simultaneously without triggering `database is locked` crashes. The system also performs daily automatic native SQLite backups (`memory.db.bak`) to protect against payload corruption. Data integrity is guaranteed via native SQLite AFTER INSERT/UPDATE/DELETE triggers that sync the FTS index, making desyncs mathematically impossible.
 4.  **🔒 Payload Bounding & Resilience**
-    Engram strictly clamps memory outputs (max 8 results) to prevent LLM context-window blowouts, and truncates incoming memories to 8,000 characters to prevent payload bloat.
+    Episoda Core strictly clamps memory outputs (max 8 results) to prevent LLM context-window blowouts, and truncates incoming memories to 8,000 characters to prevent payload bloat.
 5.  **🧠 Conflict Surfacing (Self-Healing)**
     Built-in heuristic checks warn AI agents during memory saving if they are attempting to store contradicting contexts (e.g. "We use Postgres" vs "We use Mongo").
 6.  **⌨️ Advanced CLI & Terminal UI (TUI)**
@@ -103,7 +103,7 @@ Engram is for developers who want **100% local, zero-dependency, zero-bloat** ag
 └──────────────────────────────────────────────┘
 ```
 
-When an agent requests a memory, Engram performs a multi-pass FTS5 keyword search. If the syntax is malformed, it gracefully falls back to standard `LIKE` SQL queries. It deduplicates results, bumps the access timestamp, and returns a clamped array directly to the LLM.
+When an agent requests a memory, Episoda Core performs a multi-pass FTS5 keyword search. If the syntax is malformed, it gracefully falls back to standard `LIKE` SQL queries. It deduplicates results, bumps the access timestamp, and returns a clamped array directly to the LLM.
 
 ---
 
@@ -116,12 +116,12 @@ cd episoda-core-mcp
 ```
 
 ### 2. Configure Your MCP Client
-Add Engram to your MCP configuration file (e.g., `claude_desktop_config.json` or Cursor's MCP settings):
+Add Episoda Core to your MCP configuration file (e.g., `claude_desktop_config.json` or Cursor's MCP settings):
 
 ```json
 {
   "mcpServers": {
-    "engram": {
+    "episoda": {
       "command": "python3",
       "args": ["server.py"],
       "cwd": "/absolute/path/to/episoda-core-mcp"
@@ -183,7 +183,7 @@ Check out our issues labeled `good first issue` to get started. See [CONTRIBUTIN
 
 **"database is locked" errors**
 - This happens when multiple processes try to write to the database simultaneously.
-- Engram uses WAL mode which handles most concurrency, but if you see this:
+- Episoda Core uses WAL mode which handles most concurrency, but if you see this:
   - Wait a moment and try again (the lock is usually temporary).
   - Check if another `engram` process is running.
   - Restart the MCP server if the issue persists.
@@ -212,4 +212,4 @@ Check out our issues labeled `good first issue` to get started. See [CONTRIBUTIN
 MIT — See [LICENSE](LICENSE) for details. Built by [Lalith Chandra](https://github.com/lalithbuilds).
 
 ---
-*If Engram saves you from repeating yourself to an AI, consider giving it a ⭐!*
+*If Episoda saves you from repeating yourself to an AI, consider giving it a ⭐!*
