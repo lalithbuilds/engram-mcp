@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/License-MIT-282a36.svg?style=for-the-badge&color=ff79c6" alt="License: MIT">
   <img src="https://img.shields.io/badge/python-3.8+-282a36.svg?style=for-the-badge&logo=python&logoColor=ff79c6&color=ff79c6" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/SQLite-282a36?style=for-the-badge&logo=sqlite&logoColor=ff79c6&color=ff79c6" alt="SQLite">
+  <a href="README_zh.md"><img src="https://img.shields.io/badge/文档-简体中文-red.svg?style=for-the-badge" alt="Chinese Docs"></a>
 </div>
 
 <br>
